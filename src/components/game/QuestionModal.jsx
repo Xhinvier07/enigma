@@ -1,0 +1,451 @@
+import { useState, useEffect } from 'react';
+import styled from 'styled-components';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getHint } from '../../utils/gameUtils';
+
+/**
+ * QuestionModal - Displays the question and answer input when a card is clicked
+ * 
+ * @param {Object} props
+ * @param {boolean} props.isOpen - Whether the modal is open
+ * @param {Function} props.onClose - Function to call when modal is closed
+ * @param {Object} props.question - Question data
+ * @param {Function} props.onSubmit - Function to call when answer is submitted
+ * @param {Function} props.onSkip - Function to call when question is skipped
+ * @param {string} props.studentId - ID of the current student
+ */
+const QuestionModal = ({
+  isOpen,
+  onClose,
+  question,
+  onSubmit,
+  onSkip,
+  studentId
+}) => {
+  const [answer, setAnswer] = useState('');
+  const [hints, setHints] = useState([null, null, null]);
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Reset state when a new question is shown
+  useEffect(() => {
+    if (isOpen) {
+      setAnswer('');
+      setHintsUsed(0);
+      setHints([null, null, null]);
+      setError('');
+    }
+  }, [isOpen, question?.id]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!answer.trim()) {
+      setError('Please enter an answer');
+      return;
+    }
+    
+    onSubmit(answer, hintsUsed);
+  };
+
+  const handleGetHint = async () => {
+    if (hintsUsed >= 3 || !question?.id) return;
+    
+    setIsLoading(true);
+    try {
+      const result = await getHint(question.id, hintsUsed);
+      
+      if (result.error || !result.hint) {
+        setError('Could not retrieve hint');
+      } else {
+        const newHints = [...hints];
+        newHints[hintsUsed] = result.hint;
+        setHints(newHints);
+        setHintsUsed(prev => prev + 1);
+      }
+    } catch (err) {
+      console.error('Error getting hint:', err);
+      setError('Failed to get hint');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!question) return null;
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <ModalOverlay
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <ModalContainer
+            initial={{ scale: 0.8, y: -50 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.8, y: 50 }}
+          >
+            <FilmGrain />
+            <ModalHeader>
+              <DifficultyIndicator difficulty={question.difficulty}>
+                {question.difficulty.toUpperCase()}
+              </DifficultyIndicator>
+              <h2>Case File #{question.id}</h2>
+            </ModalHeader>
+
+            <QuestionContent>
+              <QuestionText>{question.question}</QuestionText>
+              
+              {hintsUsed > 0 && (
+                <HintsContainer>
+                  {hints.map((hint, index) => {
+                    if (index >= hintsUsed || !hint) return null;
+                    return (
+                      <HintItem key={index}>
+                        <HintLabel>Clue {index + 1}:</HintLabel>
+                        <HintText>{hint}</HintText>
+                      </HintItem>
+                    );
+                  })}
+                </HintsContainer>
+              )}
+            </QuestionContent>
+
+            <form onSubmit={handleSubmit}>
+              <AnswerContainer>
+                <AnswerLabel>Your Solution:</AnswerLabel>
+                <AnswerInput 
+                  type="text"
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  placeholder="Enter your answer..."
+                />
+                {error && <ErrorText>{error}</ErrorText>}
+              </AnswerContainer>
+
+              <ButtonContainer>
+                <HintButton 
+                  type="button"
+                  onClick={handleGetHint}
+                  disabled={hintsUsed >= 3 || isLoading}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {isLoading ? 'Loading...' : `Hint (${3 - hintsUsed} left)`}
+                </HintButton>
+                <SkipButton 
+                  type="button"
+                  onClick={onSkip}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Skip Case
+                </SkipButton>
+                <SubmitButton 
+                  type="submit"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Submit Answer
+                </SubmitButton>
+              </ButtonContainer>
+            </form>
+          </ModalContainer>
+        </ModalOverlay>
+      )}
+    </AnimatePresence>
+  );
+};
+
+// Styled Components
+const ModalOverlay = styled(motion.div)`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+`;
+
+const ModalContainer = styled(motion.div)`
+  background-color: var(--aged-paper);
+  border: 3px solid var(--dark-accents);
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 700px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-heavy);
+  position: relative;
+  
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(139, 69, 19, 0.1);
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--secondary-brown);
+    border-radius: 4px;
+  }
+`;
+
+const FilmGrain = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: -1;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 300%;
+    height: 300%;
+    background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%" height="100%" filter="url(%23noise)" opacity="1"/%3E%3C/svg%3E');
+    background-repeat: repeat;
+    animation: grain 8s steps(10) infinite;
+  }
+  
+  @keyframes grain {
+    0%, 100% { transform: translate(0, 0) }
+    10% { transform: translate(-5%, -5%) }
+    20% { transform: translate(-10%, 5%) }
+    30% { transform: translate(5%, -10%) }
+    40% { transform: translate(-5%, 15%) }
+    50% { transform: translate(-10%, 5%) }
+    60% { transform: translate(15%, 0%) }
+    70% { transform: translate(0%, 10%) }
+    80% { transform: translate(-15%, 0%) }
+    90% { transform: translate(10%, 5%) }
+  }
+`;
+
+const ModalHeader = styled.div`
+  margin-bottom: 1.5rem;
+  text-align: center;
+  position: relative;
+  
+  h2 {
+    font-family: 'Playfair Display', serif;
+    color: var(--primary-dark-brown);
+    font-size: 1.8rem;
+    margin: 0;
+    letter-spacing: 1px;
+    
+    &::after {
+      content: '';
+      display: block;
+      width: 60%;
+      height: 2px;
+      background-color: var(--secondary-brown);
+      margin: 0.8rem auto 0;
+      opacity: 0.6;
+    }
+  }
+`;
+
+const DifficultyIndicator = styled.div`
+  display: inline-block;
+  font-family: 'Special Elite', cursive;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+  padding: 0.2rem 0.8rem;
+  letter-spacing: 1px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  background-color: ${props => {
+    switch (props.difficulty) {
+      case 'easy': return 'rgba(76, 175, 80, 0.2)';
+      case 'medium': return 'rgba(255, 152, 0, 0.2)';
+      case 'hard': return 'rgba(244, 67, 54, 0.2)';
+      default: return 'rgba(0, 0, 0, 0.1)';
+    }
+  }};
+  color: ${props => {
+    switch (props.difficulty) {
+      case 'easy': return '#2e7d32';
+      case 'medium': return '#e65100';
+      case 'hard': return '#c62828';
+      default: return 'var(--dark-accents)';
+    }
+  }};
+`;
+
+const QuestionContent = styled.div`
+  background-color: rgba(210, 180, 140, 0.2);
+  border: 1px solid var(--vintage-sepia);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
+    border: 1px dashed rgba(92, 64, 51, 0.3);
+    border-radius: 6px;
+    pointer-events: none;
+  }
+`;
+
+const QuestionText = styled.p`
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.1rem;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+  color: var(--dark-accents);
+  white-space: pre-line;
+`;
+
+const HintsContainer = styled.div`
+  margin-top: 1.5rem;
+  border-top: 1px dashed var(--secondary-brown);
+  padding-top: 1rem;
+`;
+
+const HintItem = styled.div`
+  margin-bottom: 1rem;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const HintLabel = styled.div`
+  font-family: 'Special Elite', cursive;
+  font-size: 0.9rem;
+  color: var(--primary-dark-brown);
+  margin-bottom: 0.3rem;
+  font-weight: bold;
+`;
+
+const HintText = styled.p`
+  font-family: 'Crimson Text', serif;
+  font-size: 1rem;
+  font-style: italic;
+  color: var(--dark-accents);
+  margin: 0;
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--accent-gold);
+`;
+
+const AnswerContainer = styled.div`
+  margin-bottom: 1.5rem;
+`;
+
+const AnswerLabel = styled.label`
+  font-family: 'Special Elite', cursive;
+  font-size: 1.1rem;
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--primary-dark-brown);
+`;
+
+const AnswerInput = styled.input`
+  font-family: 'Special Elite', cursive;
+  width: 100%;
+  padding: 0.8rem;
+  font-size: 1.1rem;
+  border: 2px solid var(--secondary-brown);
+  border-radius: 4px;
+  background-color: rgba(245, 241, 227, 0.8);
+  color: var(--dark-accents);
+  
+  &:focus {
+    outline: none;
+    border-color: var(--primary-dark-brown);
+    box-shadow: 0 0 0 3px rgba(92, 64, 51, 0.2);
+  }
+`;
+
+const ErrorText = styled.p`
+  color: #a83232;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+`;
+
+const ButtonContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+  
+  @media (max-width: 600px) {
+    flex-direction: column;
+  }
+`;
+
+const SubmitButton = styled(motion.button)`
+  flex: 2;
+  font-family: 'Special Elite', cursive;
+  background-color: var(--primary-dark-brown);
+  color: var(--aged-paper);
+  border: 2px solid var(--dark-accents);
+  padding: 0.8rem 1rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+  
+  &:hover {
+    background-color: var(--secondary-brown);
+  }
+`;
+
+const SkipButton = styled(motion.button)`
+  flex: 1;
+  font-family: 'Special Elite', cursive;
+  background-color: transparent;
+  color: var(--dark-accents);
+  border: 1px solid var(--dark-accents);
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background-color: rgba(47, 36, 23, 0.1);
+  }
+`;
+
+const HintButton = styled(motion.button)`
+  flex: 1;
+  font-family: 'Special Elite', cursive;
+  background-color: var(--vintage-sepia);
+  color: var(--dark-accents);
+  border: 1px solid var(--secondary-brown);
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  
+  &:hover:not(:disabled) {
+    background-color: var(--accent-gold);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+export default QuestionModal; 
