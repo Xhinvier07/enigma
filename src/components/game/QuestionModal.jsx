@@ -101,7 +101,7 @@ const QuestionModal = ({
               <PointsIndicator>
                 {getPoints(question.difficulty)} POINTS
               </PointsIndicator>
-              <h2>Case File #{question.id}</h2>
+              <h2>Case File #{question.id.substring(0,8)}</h2>
             </ModalHeader>
 
             <QuestionContent>
@@ -141,7 +141,11 @@ const QuestionModal = ({
                   disabled={hintsUsed >= 3 || isLoading}
                   whileTap={{ scale: 0.95 }}
                 >
-                  {isLoading ? 'Loading...' : `Hint (${3 - hintsUsed} left)`}
+                {isLoading ? 'Loading...' : (
+                  <>
+                    Hint<br />({3 - hintsUsed} left)
+                  </>
+                )}
                 </HintButton>
                 <SkipButton 
                   type="button"

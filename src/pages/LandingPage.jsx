@@ -154,15 +154,15 @@ const crypticGlow = keyframes`
 `;
 
 const EnigmaTitle = styled(motion.h1)`
-  font-family: 'Special Elite', cursive;
-  font-size: clamp(2.2rem, 7vw, 4.5rem);
+  font-family: 'Yeseva One';
+  font-size: clamp(3.5rem, 10vw, 6.5rem);
   color: #1a1a1a;
-  letter-spacing: 0.2em;
-  margin: 0 0 1.2rem 0;
+  letter-spacing: 0.10em;
+  margin: 0 0 0rem 0; /* Reduced bottom margin */
   text-align: center;
   user-select: none;
   animation: ${crypticGlow} 2.5s infinite;
-  filter: ${({ $animDone }) => $animDone ? 'drop-shadow(0 0 12px #ffe082)' : 'none'};
+  filter: ${({ $animDone }) => $animDone ? 'drop-shadow(0 0 18px #ffe082)' : 'none'};
   transition: filter 0.5s;
 `;
 
@@ -173,26 +173,26 @@ const wowEffect = keyframes`
 `;
 
 const Subtitle = styled(motion.h2)`
-  font-family: 'Libre Baskerville', serif;
-  font-size: clamp(1.1rem, 2.5vw, 2rem);
+  font-family: 'Yeseva One';
+  font-size: clamp(1.3rem, 3vw, 2.5rem);
   color: #333;
-  margin: 0 0 1.2rem 0;
+  margin: 0 0 1rem 0; /* Reduced bottom margin */
   font-weight: 400;
-  letter-spacing: 0.5px;
   text-align: center;
   animation: ${wowEffect} 1.5s;
   span {
-    color: #bfa76a;
+    color: var(--primary-dark-brown, #5C4033);
     font-weight: bold;
     text-shadow: 0 2px 8px #fff7;
+    font-size: 1.1em;
   }
 `;
 
 const CourseInfo = styled(motion.p)`
   font-family: 'Special Elite', cursive;
-  font-size: 1rem;
+  font-size: 1.4rem;
   color: #666;
-  margin: 0 0 2.5rem 0;
+  margin: 0 0 5rem 0;
   letter-spacing: 0.5px;
   font-style: italic;
   text-align: center;
@@ -200,23 +200,23 @@ const CourseInfo = styled(motion.p)`
 
 const EnterButton = styled(motion.button)`
   font-family: 'Special Elite', cursive;
-  font-size: 1.15rem;
-  padding: 1rem 2.5rem;
+  font-size: 2rem;
+  padding: 1.5rem 3.5rem;
   background-color: #1a1a1a;
   color: #f5f1e3;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   transition: all 0.3s cubic-bezier(.4,2,.3,1);
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
   font-weight: bold;
-  box-shadow: 0 2px 16px #0002;
+  box-shadow: 0 2px 24px #0003;
   outline: none;
   position: relative;
   overflow: hidden;
   &:hover, &:focus {
     background: linear-gradient(90deg, #1a1a1a 60%, #bfa76a 100%);
     color: #fffbe7;
-    box-shadow: 0 6px 24px #0003;
+    box-shadow: 0 8px 32px #0004;
     filter: brightness(1.08);
   }
   &:active {
@@ -224,8 +224,8 @@ const EnterButton = styled(motion.button)`
   }
   @media (max-width: 500px) {
     width: 100%;
-    font-size: 1rem;
-    padding: 0.8rem 1rem;
+    font-size: 1.3rem;
+    padding: 1rem 1.2rem;
   }
 `;
 

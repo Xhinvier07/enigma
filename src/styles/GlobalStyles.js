@@ -8,6 +8,8 @@ const GlobalStyles = createGlobalStyle`
   @import url('https://fonts.googleapis.com/css2?family=Special+Elite&display=swap');
   @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
 
+
+
   /* Color Variables */
   :root {
     /* Primary Colors */
@@ -47,6 +49,13 @@ const GlobalStyles = createGlobalStyle`
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+  }
+
+   @font-face {
+    font-family: 'Yeseva One';
+    src: url('/yeseva.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
   }
 
   html, body {

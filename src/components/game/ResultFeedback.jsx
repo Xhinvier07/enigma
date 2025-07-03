@@ -22,7 +22,7 @@ const ResultFeedback = ({
     if (isOpen) {
       const timer = setTimeout(() => {
         onClose();
-      }, 3000);
+      }, 1000); // Reduced from 3000ms to 1800ms
       
       return () => clearTimeout(timer);
     }
@@ -152,4 +152,4 @@ const Points = styled.div`
   }
 `;
 
-export default ResultFeedback; 
+export default ResultFeedback;

@@ -55,7 +55,7 @@ const GameBoard = () => {
         
         // Set game end time (30 minutes from now)
         const endTime = new Date();
-        endTime.setMinutes(endTime.getMinutes() + 30); // 30-minute game
+        endTime.setMinutes(endTime.getMinutes() + 5); // 30-minute game
         setGameEndTime(endTime);
       } catch (err) {
         console.error('Error initializing game:', err);
@@ -179,8 +179,8 @@ const GameBoard = () => {
       </TopBar>
       
       <GameTitle>
-        <h1>Enigma 29: Capture the Clues</h1>
-        <Subtitle>Solve the cases, detective.</Subtitle>
+        <h1>Enigma 29: The Caseboard</h1>
+        <Subtitle>Each clue brings you closer to the truth.</Subtitle>
       </GameTitle>
       
       {gameEnded ? (
@@ -262,13 +262,12 @@ const GameInfo = styled.div`
 
 const SectionInfo = styled.div`
   font-family: 'Special Elite', cursive;
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   color: var(--secondary-brown);
-  margin-bottom: 0.5rem;
 `;
 
 const DetectiveName = styled.div`
-  font-family: 'Playfair Display', serif;
+  font-family: 'Yeseva One', cursive;
   font-size: 1.5rem;
   color: var(--primary-dark-brown);
   font-weight: bold;
@@ -316,8 +315,8 @@ const GameTitle = styled.div`
   margin-bottom: 2.5rem;
   
   h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(1.8rem, 4vw, 2.5rem);
+    font-family: 'Yeseva One', cursive;
+    font-size: clamp(3rem, 5vw, 3.2rem);
     color: var(--primary-dark-brown);
     margin-bottom: 0.5rem;
   }
@@ -329,7 +328,7 @@ const GameTitle = styled.div`
 
 const Subtitle = styled.p`
   font-family: 'Special Elite', cursive;
-  font-size: 1.1rem;
+  font-size: 1.5rem;
   color: var(--dark-accents);
   opacity: 0.8;
 `;
