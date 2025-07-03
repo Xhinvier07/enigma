@@ -22,6 +22,7 @@ const IntroModal = ({
   const [typedContent, setTypedContent] = useState('');
   const [isTyping, setIsTyping] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showStamp, setShowStamp] = useState(false);
 
   // Typewriter effect
   useEffect(() => {
@@ -36,6 +37,10 @@ const IntroModal = ({
       return () => clearTimeout(timeout);
     } else {
       setIsTyping(false);
+      // Show stamp after typing is complete
+      setTimeout(() => {
+        setShowStamp(true);
+      }, 500);
     }
   }, [isOpen, isTyping, currentIndex, content]);
 
@@ -44,6 +49,10 @@ const IntroModal = ({
     setTypedContent(content);
     setIsTyping(false);
     setCurrentIndex(content.length);
+    // Show stamp immediately when skipping
+    setTimeout(() => {
+      setShowStamp(true);
+    }, 300);
   };
 
   return (
@@ -53,28 +62,68 @@ const IntroModal = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          onClick={(e) => {
+            // Close only if clicking the overlay, not the modal itself
+            if (e.target === e.currentTarget && !isTyping) {
+              onClose();
+            }
+          }}
         >
           <ModalContainer
             initial={{ scale: 0.8, y: -50 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.8, y: 50 }}
+            onClick={(e) => e.stopPropagation()}
           >
             <FilmGrain />
+            <ClipCorner position="top-left" />
+            <ClipCorner position="top-right" />
+            <ClipCorner position="bottom-left" />
+            <ClipCorner position="bottom-right" />
+            
             <ModalHeader>
-              <h2>{title}</h2>
+              <RedLine />
+              <TitleWrapper>
+                <h2>{title}</h2>
+                <FileNumber>FILE #29</FileNumber>
+              </TitleWrapper>
+              <RedLine />
             </ModalHeader>
+            
             <ModalContent>
               <p>{typedContent}</p>
               {isTyping && (
                 <TypewriterCursor />
               )}
+              
+              <AnimatePresence>
+                {showStamp && (
+                  <ConfidentialStamp
+                    initial={{ opacity: 0, scale: 1.5, rotate: -20 }}
+                    animate={{ opacity: 1, scale: 1, rotate: -20 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    CONFIDENTIAL
+                  </ConfidentialStamp>
+                )}
+              </AnimatePresence>
             </ModalContent>
+            
             <ModalFooter>
-              {isTyping ? (
-                <VintageButton onClick={handleSkipTyping}>Skip Typing</VintageButton>
-              ) : (
-                <VintageButton onClick={onClose}>{buttonText}</VintageButton>
-              )}
+              <ButtonWrapper>
+                {isTyping ? (
+                  <VintageButton onClick={handleSkipTyping}>Skip Typing</VintageButton>
+                ) : (
+                  <VintageButton 
+                    onClick={onClose}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {buttonText}
+                  </VintageButton>
+                )}
+              </ButtonWrapper>
+              <FooterDecoration />
             </ModalFooter>
           </ModalContainer>
         </ModalOverlay>
@@ -95,6 +144,9 @@ const ModalOverlay = styled(motion.div)`
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  backdrop-filter: blur(3px);
+  padding: 1rem;
+  overflow-y: auto;
 `;
 
 const ModalContainer = styled(motion.div)`
@@ -102,11 +154,69 @@ const ModalContainer = styled(motion.div)`
   border: 3px solid var(--dark-accents);
   border-radius: 8px;
   padding: 2rem;
-  max-width: 600px;
-  width: 90%;
+  max-width: 1200px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: var(--shadow-heavy);
   position: relative;
-  overflow: hidden;
+  margin: auto;
+  
+  @media (max-width: 768px) {
+    padding: 1.5rem;
+    max-height: 85vh;
+  }
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+      linear-gradient(rgba(245, 241, 227, 0.7) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245, 241, 227, 0.7) 1px, transparent 1px);
+    background-size: 20px 20px;
+    opacity: 0.3;
+    pointer-events: none;
+  }
+`;
+
+const ClipCorner = styled.div`
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background-color: #1a1a1a;
+  z-index: 2;
+  
+  ${({ position }) => {
+    if (position === 'top-left') {
+      return `
+        top: 0;
+        left: 0;
+        clip-path: polygon(0 0, 100% 0, 0 100%);
+      `;
+    } else if (position === 'top-right') {
+      return `
+        top: 0;
+        right: 0;
+        clip-path: polygon(100% 0, 0 0, 100% 100%);
+      `;
+    } else if (position === 'bottom-left') {
+      return `
+        bottom: 0;
+        left: 0;
+        clip-path: polygon(0 100%, 100% 100%, 0 0);
+      `;
+    } else if (position === 'bottom-right') {
+      return `
+        bottom: 0;
+        right: 0;
+        clip-path: polygon(100% 100%, 0 100%, 100% 0);
+      `;
+    }
+  }}
 `;
 
 const FilmGrain = styled.div`
@@ -147,26 +257,76 @@ const FilmGrain = styled.div`
 const ModalHeader = styled.div`
   margin-bottom: 1.5rem;
   text-align: center;
+`;
+
+const TitleWrapper = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0.5rem 0;
+  
+  @media (max-width: 576px) {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
   
   h2 {
     font-family: 'Special Elite', cursive;
     color: var(--dark-accents);
-    font-size: 2rem;
+    font-size: 1.8rem;
     letter-spacing: 2px;
     margin: 0;
+    text-align: left;
+    flex: 1;
+    
+    @media (max-width: 576px) {
+      font-size: 1.5rem;
+      text-align: center;
+    }
   }
+`;
+
+const FileNumber = styled.div`
+  font-family: 'Special Elite', cursive;
+  color: var(--secondary-brown);
+  font-size: 1rem;
+  border: 1px solid var(--secondary-brown);
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  opacity: 0.8;
+  
+  @media (max-width: 576px) {
+    align-self: center;
+  }
+`;
+
+const RedLine = styled.div`
+  height: 2px;
+  background-color: rgba(139, 0, 0, 0.7);
+  width: 100%;
+  margin: 0.5rem 0;
 `;
 
 const ModalContent = styled.div`
   margin-bottom: 2rem;
   position: relative;
   min-height: 100px;
+  padding: 1rem;
+  border: 1px dashed var(--secondary-brown);
+  background-color: rgba(245, 241, 227, 0.5);
   
   p {
     font-family: 'Special Elite', cursive;
     font-size: 1.2rem;
     line-height: 1.8;
     white-space: pre-line;
+    position: relative;
+    z-index: 2;
+    
+    @media (max-width: 576px) {
+      font-size: 1rem;
+      line-height: 1.6;
+    }
   }
 `;
 
@@ -184,22 +344,55 @@ const TypewriterCursor = styled.span`
   }
 `;
 
-const ModalFooter = styled.div`
-  display: flex;
-  justify-content: center;
+const ConfidentialStamp = styled(motion.div)`
+  position: absolute;
+  top: 50%;
+  left: 20%;
+  transform: translate(-50%, -50%) rotate(-20deg);
+  font-family: 'Impact', sans-serif;
+  font-size: 4rem;
+  color: rgba(139, 0, 0, 0.6);
+  border: 5px solid rgba(139, 0, 0, 0.6);
+  padding: 0.5rem 1rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.8;
+  text-align: center;
+  
+  @media (max-width: 768px) {
+    font-size: 3rem;
+  }
+  
+  @media (max-width: 576px) {
+    font-size: 2rem;
+    border-width: 3px;
+  }
 `;
 
-const VintageButton = styled.button`
+const ModalFooter = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
+const ButtonWrapper = styled.div`
+  margin-bottom: 1rem;
+`;
+
+const VintageButton = styled(motion.button)`
   font-family: 'Special Elite', cursive;
   background-color: var(--primary-dark-brown);
   color: var(--aged-paper);
   border: 2px solid var(--dark-accents);
-  padding: 0.7rem 1.5rem;
+  padding: 0.8rem 2rem;
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
   border-radius: 4px;
   box-shadow: var(--shadow-light);
+  letter-spacing: 1px;
   
   &:hover {
     background-color: var(--secondary-brown);
@@ -210,6 +403,14 @@ const VintageButton = styled.button`
   &:active {
     transform: translateY(0);
   }
+`;
+
+const FooterDecoration = styled.div`
+  width: 100%;
+  height: 10px;
+  background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="10" viewBox="0 0 80 10" fill="none"%3E%3Cpath d="M0 0L10 5L0 10M20 0L30 5L20 10M40 0L50 5L40 10M60 0L70 5L60 10" stroke="%235C4033" stroke-opacity="0.5"/%3E%3C/svg%3E');
+  background-repeat: repeat-x;
+  opacity: 0.5;
 `;
 
 export default IntroModal; 

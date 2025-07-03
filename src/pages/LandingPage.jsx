@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import IntroModal from '../components/common/IntroModal';
+import bgLanding from '../assets/bg_landing.png';
 
 /**
  * LandingPage - Main entry point for the application
@@ -10,7 +11,15 @@ import IntroModal from '../components/common/IntroModal';
  */
 const LandingPage = () => {
   const [showModal, setShowModal] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Simulate assets loading
+    setTimeout(() => {
+      setLoaded(true);
+    }, 500);
+  }, []);
 
   const handleEnterClick = () => {
     setShowModal(true);
@@ -43,52 +52,42 @@ Good luck, Detective. The case awaits.`;
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      <PaperTexture />
-      <LogoContainer>
-        <Title
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2, duration: 0.8 }}
-        >
-          ENIGMA 29
-        </Title>
-        <Subtitle
-          initial={{ y: -30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.8 }}
-        >
-          Capture the Clues
-        </Subtitle>
-        <Tagline
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8, duration: 0.8 }}
-        >
-          Solve the Case
-        </Tagline>
+      <CaseFileContainer
+        initial={{ opacity: 0, y: 20 }}
+        animate={loaded ? { opacity: 1, y: 0 } : {}}
+        transition={{ delay: 0.3, duration: 0.8 }}
+      >
+        <Title>ENIGMA 29</Title>
+        <Subtitle>Capture the Clues. Solve the Case</Subtitle>
+        <CourseInfo>CS0029: Capture the Flag</CourseInfo>
+        
         <EnterButton
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 1.2, duration: 0.5 }}
-          whileHover={{ scale: 1.05 }}
+          initial={{ opacity: 0 }}
+          animate={loaded ? { opacity: 1 } : {}}
+          transition={{ delay: 0.8, duration: 0.5 }}
+          whileHover={{ 
+            scale: 1.05, 
+            boxShadow: "0 4px 8px rgba(0, 0, 0, 0.3)" 
+          }}
           whileTap={{ scale: 0.95 }}
           onClick={handleEnterClick}
         >
-          ENTER
+          ENTER THE ROOM
         </EnterButton>
-      </LogoContainer>
-      
-      <VintageStamp>CS0029</VintageStamp>
-      <BottomAccent />
+      </CaseFileContainer>
       
       {/* Intro Modal */}
-      <IntroModal 
-        isOpen={showModal} 
-        onClose={handleModalClose}
-        title="CONFIDENTIAL: DETECTIVE BRIEFING"
-        content={briefingText}
-        buttonText="ACCEPT MISSION"
-      />
+      <AnimatePresence>
+        {showModal && (
+          <IntroModal 
+            isOpen={showModal} 
+            onClose={handleModalClose}
+            title="CONFIDENTIAL: DETECTIVE BRIEFING"
+            content={briefingText}
+            buttonText="ACCEPT MISSION"
+          />
+        )}
+      </AnimatePresence>
     </PageContainer>
   );
 };
@@ -100,150 +99,90 @@ const PageContainer = styled(motion.div)`
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: var(--aged-paper);
   position: relative;
-  overflow: hidden;
   padding: 2rem;
+  background-image: url(${bgLanding});
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 `;
 
-const PaperTexture = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.15" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%" height="100%" filter="url(%23noise)" opacity="0.4"/%3E%3C/svg%3E');
-  opacity: 0.4;
-  pointer-events: none;
-`;
-
-const LogoContainer = styled.div`
+const CaseFileContainer = styled(motion.div)`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  z-index: 1;
+  padding: 2.5rem 3rem;
+  background-color: rgba(245, 241, 227, 0.95);
+  border-radius: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  max-width: 90%;
+  width: 800px;
+  height: 300px;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    border: 1px solid rgba(92, 64, 51, 0.3);
+    pointer-events: none;
+  }
 `;
 
-const Title = styled(motion.h1)`
+const Title = styled.h1`
   font-family: 'Playfair Display', serif;
-  font-size: clamp(3rem, 10vw, 5rem);
-  color: var(--primary-dark-brown);
-  margin-bottom: 0.5rem;
-  letter-spacing: 6px;
-  font-weight: 700;
-  text-shadow: 3px 3px 0px var(--vintage-sepia);
-  
-  @media (max-width: 768px) {
-    font-size: clamp(2.5rem, 8vw, 4rem);
-  }
-`;
-
-const Subtitle = styled(motion.h2)`
-  font-family: 'Libre Baskerville', serif;
-  font-size: clamp(1.5rem, 5vw, 2.5rem);
-  color: var(--secondary-brown);
-  margin-bottom: 1rem;
-  font-weight: 400;
-  letter-spacing: 2px;
-  
-  @media (max-width: 768px) {
-    font-size: clamp(1.2rem, 4vw, 2rem);
-  }
-`;
-
-const Tagline = styled(motion.p)`
-  font-family: 'Special Elite', cursive;
-  font-size: clamp(1rem, 3vw, 1.5rem);
-  color: var(--dark-accents);
-  margin-bottom: 2.5rem;
+  font-size: 2.8rem;
+  color: #1a1a1a;
+  margin: 0 0 0.5rem;
   letter-spacing: 1px;
+  font-weight: 700;
+  line-height: 1.1;
+  
+  @media (max-width: 768px) {
+    font-size: 2.4rem;
+  }
+`;
+
+const Subtitle = styled.h2`
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.1rem;
+  color: #333;
+  margin: 0 0 1rem;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  
+  @media (max-width: 768px) {
+    font-size: 1rem;
+  }
+`;
+
+const CourseInfo = styled.p`
+  font-family: 'Special Elite', cursive;
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0 0 2rem;
+  letter-spacing: 0.5px;
+  font-style: italic;
 `;
 
 const EnterButton = styled(motion.button)`
   font-family: 'Special Elite', cursive;
-  font-size: 1.2rem;
-  padding: 0.8rem 2.5rem;
-  background-color: var(--primary-dark-brown);
-  color: var(--aged-paper);
-  border: 2px solid var(--dark-accents);
+  font-size: 1rem;
+  padding: 0.8rem 1.5rem;
+  background-color: #1a1a1a;
+  color: #f5f1e3;
+  border: none;
   cursor: pointer;
   transition: all 0.3s ease;
-  border-radius: 4px;
-  box-shadow: var(--shadow-light);
-  letter-spacing: 2px;
-  position: relative;
-  overflow: hidden;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.2),
-      transparent
-    );
-    transition: 0.5s;
-  }
-  
-  &:hover::before {
-    left: 100%;
-  }
-`;
-
-const VintageStamp = styled.div`
-  position: absolute;
-  bottom: 30px;
-  right: 40px;
-  font-family: 'Special Elite', cursive;
-  color: var(--primary-dark-brown);
-  font-size: 1.2rem;
-  transform: rotate(-5deg);
-  border: 1px solid var(--secondary-brown);
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  opacity: 0.8;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: -5px;
-    left: -5px;
-    right: -5px;
-    bottom: -5px;
-    border: 1px dashed var(--secondary-brown);
-    border-radius: 6px;
-    opacity: 0.5;
-    z-index: -1;
-  }
-`;
-
-const BottomAccent = styled.div`
-  position: absolute;
-  bottom: 0;
-  left: 0;
+  letter-spacing: 1px;
   width: 100%;
-  height: 15px;
-  background-color: var(--dark-accents);
-  opacity: 0.5;
   
-  &::before {
-    content: '';
-    position: absolute;
-    top: -15px;
-    left: 0;
-    width: 100%;
-    height: 15px;
-    background: repeating-linear-gradient(
-      -45deg,
-      var(--dark-accents),
-      var(--dark-accents) 10px,
-      var(--secondary-brown) 10px,
-      var(--secondary-brown) 20px
-    );
-    opacity: 0.3;
+  &:hover {
+    background-color: #333;
   }
 `;
 
