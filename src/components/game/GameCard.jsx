@@ -109,7 +109,7 @@ const CardSide = styled.div`
 
 const CardFront = styled(CardSide)`
   transform: rotateY(0deg);
-  background-image: url('/src/public/gamecard.png');
+  background-image: url('/gamecard.png');
   
   &:hover {
     box-shadow: var(--shadow-heavy);
@@ -119,7 +119,7 @@ const CardFront = styled(CardSide)`
 
 const CardBack = styled(CardSide)`
   transform: rotateY(180deg);
-  background-image: url('/src/assets/gamecard.png');
+  background-image: url('/gamecard.png');
 `;
 
 const CardNumber = styled.div`
