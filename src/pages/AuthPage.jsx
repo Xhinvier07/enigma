@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { validateAccessCode, registerStudent } from '../utils/authUtils';
+import bgLanding from '../assets/bg_landing.png';
+import magnifier from '../assets/magnifying.png';
 
 /**
  * AuthPage - Where students enter their access code and name
@@ -97,14 +99,19 @@ const AuthPage = () => {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
+      <DetectiveSeal>
+        <SealIcon>🕵️‍♂️</SealIcon>
+        <SealText>Detective Bureau</SealText>
+      </DetectiveSeal>
       <AuthCard
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
+        <PaperClip />
         <CardHeader>
           <TitleAccent />
-          <h2>ACCESS VERIFICATION</h2>
+          <h2>CASE FILE ACCESS</h2>
         </CardHeader>
         
         {!showConfirmation ? (
@@ -129,7 +136,7 @@ const AuthPage = () => {
                 </FieldGroup>
                 
                 <FieldGroup>
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="name">Detective Name</Label>
                   <StyledField 
                     id="name"
                     name="name" 
@@ -142,17 +149,18 @@ const AuthPage = () => {
                 <SubmitButton 
                   type="submit" 
                   disabled={isSubmitting || loading}
-                  whileHover={{ scale: 1.02 }}
+                  whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {loading ? 'Verifying...' : 'Continue'}
+                  <MagnifierIcon src={magnifier} alt="magnifier" />
+                  {loading ? 'Verifying...' : 'Begin Investigation'}
                 </SubmitButton>
               </StyledForm>
             )}
           </Formik>
         ) : (
           <ConfirmationContainer>
-            <h3>Please Confirm Your Details</h3>
+            <h3>Confirm Detective Details</h3>
             
             <InfoGrid>
               <InfoLabel>Name:</InfoLabel>
@@ -165,7 +173,7 @@ const AuthPage = () => {
               <InfoValue>{studentData.section}</InfoValue>
             </InfoGrid>
             
-            <p>Once confirmed, you will proceed to the game.</p>
+            <p>Once confirmed, you will proceed to the case board.</p>
             
             <ButtonGroup>
               <CancelButton 
@@ -196,17 +204,72 @@ const AuthPage = () => {
 };
 
 // Styled Components
+const DetectiveSeal = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(245, 241, 227, 0.85);
+  border: 2px solid var(--secondary-brown);
+  border-radius: 50px;
+  padding: 0.5rem 2rem 0.5rem 1.2rem;
+  box-shadow: 0 2px 12px #0002;
+  font-family: 'Special Elite', cursive;
+  font-size: 1.2rem;
+  color: var(--primary-dark-brown);
+  margin-bottom: 1.5rem;
+  letter-spacing: 2px;
+  user-select: none;
+  position: relative;
+  z-index: 2;
+  
+  @media (max-width: 600px) {
+    font-size: 1rem;
+    padding: 0.3rem 1rem 0.3rem 0.7rem;
+  }
+`;
+
+const SealIcon = styled.span`
+  font-size: 2rem;
+  filter: grayscale(0.2) drop-shadow(0 2px 2px #0002);
+`;
+
+const SealText = styled.span`
+  font-weight: bold;
+`;
+
+const PaperClip = styled.div`
+  position: absolute;
+  top: -22px;
+  left: 32px;
+  width: 38px;
+  height: 38px;
+  background: url('https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4ce.png') no-repeat center/contain;
+  z-index: 3;
+  opacity: 0.7;
+  
+  @media (max-width: 600px) {
+    left: 10px;
+    width: 28px;
+    height: 28px;
+    top: -14px;
+  }
+`;
+
 const PageContainer = styled(motion.div)`
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: var(--aged-paper);
+  /* Use the landing background image */
+  background-image: url(${bgLanding});
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   padding: 2rem;
   position: relative;
   overflow: hidden;
-  
+
   &::before {
     content: '';
     position: absolute;
@@ -221,26 +284,25 @@ const PageContainer = styled(motion.div)`
 `;
 
 const AuthCard = styled(motion.div)`
-  background-color: var(--aged-paper);
-  border: 2px solid var(--dark-accents);
-  border-radius: 8px;
-  padding: 2rem;
+  background: repeating-linear-gradient(135deg, #f5f1e3 0 2px, #f3e7c9 2px 8px);
+  border: 2.5px solid var(--primary-dark-brown);
+  border-radius: 12px;
+  padding: 2.5rem 2rem 2rem 2rem;
   width: 100%;
-  max-width: 500px;
-  box-shadow: var(--shadow-medium);
+  max-width: 440px;
+  box-shadow: 0 8px 32px #0003, 0 1.5px 0 #bfa76a;
   position: relative;
-  
+  margin-bottom: 2.5rem;
+
   &::before {
     content: '';
     position: absolute;
-    top: -10px;
-    left: -10px;
-    right: -10px;
-    bottom: -10px;
-    border: 1px dashed var(--secondary-brown);
+    top: 0; left: 0; right: 0; bottom: 0;
+    border: 1.5px dashed var(--secondary-brown);
     border-radius: 12px;
-    opacity: 0.5;
-    z-index: -1;
+    opacity: 0.4;
+    z-index: 1;
+    pointer-events: none;
   }
 `;
 
@@ -251,41 +313,28 @@ const CardHeader = styled.div`
   
   h2 {
     font-family: 'Special Elite', cursive;
-    color: var(--dark-accents);
-    font-size: 1.8rem;
+    color: var(--primary-dark-brown);
+    font-size: 1.7rem;
     margin: 0;
     letter-spacing: 2px;
+    text-shadow: 0 2px 8px #bfa76a33;
   }
 `;
 
 const TitleAccent = styled.div`
-  height: 2px;
-  background-color: var(--secondary-brown);
-  margin: 0 auto 1rem;
-  width: 50%;
+  height: 2.5px;
+  background: repeating-linear-gradient(90deg, #bfa76a 0 8px, transparent 8px 16px);
+  margin: 0 auto 1.1rem;
+  width: 60%;
   opacity: 0.7;
-  
-  &::before, &::after {
-    content: '★';
-    position: absolute;
-    top: -8px;
-    font-size: 1.2rem;
-    color: var(--secondary-brown);
-  }
-  
-  &::before {
-    left: 25%;
-  }
-  
-  &::after {
-    right: 25%;
-  }
 `;
 
 const StyledForm = styled(Form)`
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  position: relative;
+  z-index: 2;
 `;
 
 const FieldGroup = styled.div`
@@ -294,43 +343,48 @@ const FieldGroup = styled.div`
 `;
 
 const Label = styled.label`
-  font-family: 'Libre Baskerville', serif;
-  font-size: 1rem;
+  font-family: 'Special Elite', cursive;
+  font-size: 1.08rem;
   margin-bottom: 0.5rem;
-  color: var(--dark-accents);
+  color: var(--primary-dark-brown);
+  letter-spacing: 1.2px;
 `;
 
 const StyledField = styled(Field)`
   font-family: 'Special Elite', cursive;
-  padding: 0.8rem;
-  border: 1px solid var(--secondary-brown);
-  border-radius: 4px;
-  background-color: rgba(245, 241, 227, 0.8);
-  color: var(--dark-accents);
-  font-size: 1.1rem;
-  letter-spacing: 1px;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid var(--secondary-brown);
+  border-radius: 5px;
+  background-color: rgba(245, 241, 227, 0.92);
+  color: var(--primary-dark-brown);
+  font-size: 1.13rem;
+  letter-spacing: 1.2px;
+  box-shadow: 0 1px 6px #0001;
+  transition: border 0.2s, box-shadow 0.2s;
   
   &:focus {
     outline: none;
-    border-color: var(--primary-dark-brown);
-    box-shadow: 0 0 0 2px rgba(92, 64, 51, 0.2);
+    border-color: #bfa76a;
+    box-shadow: 0 0 0 2px #bfa76a33;
   }
   
   &::placeholder {
-    color: rgba(47, 36, 23, 0.5);
+    color: #bfa76a99;
+    font-style: italic;
+    opacity: 0.8;
   }
 `;
 
 const StyledErrorMessage = styled(ErrorMessage)`
   color: #a83232;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   margin-top: 0.5rem;
   font-family: 'Crimson Text', serif;
 `;
 
 const ErrorAlert = styled.div`
-  background-color: rgba(168, 50, 50, 0.1);
-  border: 1px solid #a83232;
+  background-color: rgba(168, 50, 50, 0.08);
+  border: 1.5px solid #a83232;
   color: #a83232;
   padding: 0.8rem;
   border-radius: 4px;
@@ -340,17 +394,21 @@ const ErrorAlert = styled.div`
 
 const SubmitButton = styled(motion.button)`
   font-family: 'Special Elite', cursive;
-  background-color: var(--primary-dark-brown);
-  color: var(--aged-paper);
-  border: 2px solid var(--dark-accents);
-  padding: 0.8rem;
-  font-size: 1.1rem;
+  background-color: #1a1a1a;
+  color: #f5f1e3;
+  border: 2px solid #bfa76a;
+  padding: 0.9rem 1.5rem 0.9rem 2.5rem;
+  font-size: 1.13rem;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 5px;
   margin-top: 1rem;
-  transition: all 0.3s ease;
-  box-shadow: var(--shadow-light);
-  letter-spacing: 1px;
+  transition: all 0.3s cubic-bezier(.4,2,.3,1);
+  box-shadow: 0 2px 16px #0002;
+  letter-spacing: 1.2px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
   
   &:disabled {
     opacity: 0.7;
@@ -358,20 +416,32 @@ const SubmitButton = styled(motion.button)`
   }
   
   &:hover:not(:disabled) {
-    background-color: var(--secondary-brown);
-    box-shadow: var(--shadow-medium);
+    background: linear-gradient(90deg, #1a1a1a 60%, #bfa76a 100%);
+    color: #fffbe7;
+    box-shadow: 0 6px 24px #0003;
+    filter: brightness(1.08);
   }
+`;
+
+const MagnifierIcon = styled.img`
+  width: 1.3em;
+  height: 1.3em;
+  filter: drop-shadow(0 1px 2px #0002);
+  margin-right: 0.2em;
 `;
 
 const ConfirmationContainer = styled.div`
   display: flex;
   flex-direction: column;
+  z-index: 2;
   
   h3 {
-    font-family: 'Libre Baskerville', serif;
-    color: var(--primary-dark-brown);
+    font-family: 'Special Elite', cursive;
+    color: #bfa76a;
     margin-bottom: 1.5rem;
     text-align: center;
+    letter-spacing: 1.5px;
+    font-size: 1.2rem;
   }
   
   p {
@@ -387,21 +457,21 @@ const InfoGrid = styled.div`
   grid-template-columns: 120px 1fr;
   gap: 0.8rem;
   margin: 0.5rem 0 1rem;
-  background-color: rgba(210, 180, 140, 0.2);
+  background-color: rgba(210, 180, 140, 0.13);
   padding: 1rem;
   border-radius: 4px;
-  border: 1px solid var(--vintage-sepia);
+  border: 1.5px solid #bfa76a;
 `;
 
 const InfoLabel = styled.span`
   font-weight: bold;
-  color: var(--primary-dark-brown);
-  font-family: 'Libre Baskerville', serif;
+  color: #bfa76a;
+  font-family: 'Special Elite', cursive;
 `;
 
 const InfoValue = styled.span`
   font-family: 'Special Elite', cursive;
-  color: var(--dark-accents);
+  color: var(--primary-dark-brown);
 `;
 
 const ButtonGroup = styled.div`
@@ -414,15 +484,15 @@ const ButtonGroup = styled.div`
 const ConfirmButton = styled(motion.button)`
   flex: 2;
   font-family: 'Special Elite', cursive;
-  background-color: var(--primary-dark-brown);
-  color: var(--aged-paper);
-  border: 2px solid var(--dark-accents);
+  background-color: #1a1a1a;
+  color: #f5f1e3;
+  border: 2px solid #bfa76a;
   padding: 0.8rem;
   font-size: 1.1rem;
   cursor: pointer;
   border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: var(--shadow-light);
+  transition: all 0.3s cubic-bezier(.4,2,.3,1);
+  box-shadow: 0 2px 16px #0002;
   
   &:disabled {
     opacity: 0.7;
@@ -430,8 +500,10 @@ const ConfirmButton = styled(motion.button)`
   }
   
   &:hover:not(:disabled) {
-    background-color: var(--secondary-brown);
-    box-shadow: var(--shadow-medium);
+    background: linear-gradient(90deg, #1a1a1a 60%, #bfa76a 100%);
+    color: #fffbe7;
+    box-shadow: 0 6px 24px #0003;
+    filter: brightness(1.08);
   }
 `;
 
@@ -439,16 +511,16 @@ const CancelButton = styled(motion.button)`
   flex: 1;
   font-family: 'Special Elite', cursive;
   background-color: transparent;
-  color: var(--primary-dark-brown);
-  border: 1px solid var(--primary-dark-brown);
+  color: #bfa76a;
+  border: 1.5px solid #bfa76a;
   padding: 0.8rem;
   font-size: 1rem;
   cursor: pointer;
   border-radius: 4px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(.4,2,.3,1);
   
   &:hover {
-    background-color: rgba(92, 64, 51, 0.1);
+    background-color: #bfa76a22;
   }
 `;
 
@@ -466,6 +538,8 @@ const Stamp = styled.div`
   flex-direction: column;
   align-items: center;
   border-radius: 5px;
+  background: rgba(245, 241, 227, 0.85);
+  box-shadow: 0 2px 8px #0001;
   
   @media (max-width: 768px) {
     bottom: 20px;
@@ -479,4 +553,4 @@ const StampDate = styled.span`
   margin-top: 0.3rem;
 `;
 
-export default AuthPage; 
+export default AuthPage;
