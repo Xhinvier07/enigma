@@ -231,7 +231,7 @@ const GameBoard = () => {
 // Styled Components
 const GameContainer = styled.div`
   min-height: 100vh;
-  background-image: url('/src/assets/bg2.png');
+  background-image: url('/src/public/bg2.png');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
