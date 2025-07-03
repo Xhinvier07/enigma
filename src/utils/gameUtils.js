@@ -56,23 +56,23 @@ export const verifyAnswer = async (questionId, answer) => {
 
     if (error || !data) {
       console.error('Error fetching question difficulty:', error);
-      return { correct: true, points: 10 }; // Default to 10 points if we can't determine difficulty
+      return { correct: true, points: 50 }; // Default to 50 points if we can't determine difficulty
     }
 
     // Calculate points based on difficulty
     let points = 0;
     switch (data.difficulty) {
       case 'easy':
-        points = 10;
+        points = 50;
         break;
       case 'medium':
-        points = 20;
+        points = 100;
         break;
       case 'hard':
-        points = 30;
+        points = 200;
         break;
       default:
-        points = 15;
+        points = 50;
     }
 
     return { correct: true, points };
@@ -161,4 +161,4 @@ export const getLeaderboard = async (section = null) => {
     console.error('Unexpected error fetching leaderboard:', err);
     return [];
   }
-}; 
+};

@@ -231,7 +231,10 @@ const GameBoard = () => {
 // Styled Components
 const GameContainer = styled.div`
   min-height: 100vh;
-  background-color: var(--aged-paper);
+  background-image: url('/src/assets/bg2.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   padding: 1.5rem;
   position: relative;
   
@@ -498,4 +501,4 @@ const GameOverButton = styled.button`
   }
 `;
 
-export default GameBoard; 
+export default GameBoard;

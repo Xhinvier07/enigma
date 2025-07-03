@@ -281,20 +281,20 @@ const GlobalStyles = createGlobalStyle`
 
   /* Custom scrollbar */
   ::-webkit-scrollbar {
-    width: 10px;
+    width: 6px; /* Reduced from 10px for a more minimalist look */
   }
 
   ::-webkit-scrollbar-track {
-    background: var(--aged-paper);
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--soft-edges);
-    border-radius: 5px;
+    background: var(--primary-dark-brown);
+    border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-dark-brown);
+    background: var(--secondary-brown);
   }
 
   /* Utility classes */
@@ -384,4 +384,4 @@ const GlobalStyles = createGlobalStyle`
   }
 `;
 
-export default GlobalStyles; 
+export default GlobalStyles;

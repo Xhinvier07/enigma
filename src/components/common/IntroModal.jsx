@@ -32,7 +32,7 @@ const IntroModal = ({
       const timeout = setTimeout(() => {
         setTypedContent(prev => prev + content[currentIndex]);
         setCurrentIndex(prev => prev + 1);
-      }, 30); // Typing speed
+      }, 5); // Typing speed
 
       return () => clearTimeout(timeout);
     } else {
@@ -40,7 +40,7 @@ const IntroModal = ({
       // Show stamp after typing is complete
       setTimeout(() => {
         setShowStamp(true);
-      }, 500);
+      }, 200);
     }
   }, [isOpen, isTyping, currentIndex, content]);
 
@@ -78,8 +78,6 @@ const IntroModal = ({
             <FilmGrain />
             <ClipCorner position="top-left" />
             <ClipCorner position="top-right" />
-            <ClipCorner position="bottom-left" />
-            <ClipCorner position="bottom-right" />
             
             <ModalHeader>
               <RedLine />
@@ -99,8 +97,8 @@ const IntroModal = ({
               <AnimatePresence>
                 {showStamp && (
                   <ConfidentialStamp
-                    initial={{ opacity: 0, scale: 1.5, rotate: -20 }}
-                    animate={{ opacity: 1, scale: 1, rotate: -20 }}
+                    initial={{ opacity: 0, scale: 1.5, rotate: -8 }}
+                    animate={{ opacity: 1, scale: 1, rotate: -8 }}
                     transition={{ duration: 0.5 }}
                   >
                     CONFIDENTIAL
@@ -137,8 +135,8 @@ const ModalOverlay = styled(motion.div)`
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: center;
@@ -147,6 +145,11 @@ const ModalOverlay = styled(motion.div)`
   backdrop-filter: blur(3px);
   padding: 1rem;
   overflow-y: auto;
+  overflow-x: hidden;
+  /* Hide scrollbar for all browsers */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE 10+ */
+  &::-webkit-scrollbar { display: none; }
 `;
 
 const ModalContainer = styled(motion.div)`
@@ -154,42 +157,31 @@ const ModalContainer = styled(motion.div)`
   border: 3px solid var(--dark-accents);
   border-radius: 8px;
   padding: 2rem;
-  max-width: 1200px;
+  max-width: 98vw;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: var(--shadow-heavy);
   position: relative;
   margin: auto;
-  
   @media (max-width: 768px) {
-    padding: 1.5rem;
+    padding: 1.2rem;
     max-height: 85vh;
   }
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: 
-      linear-gradient(rgba(245, 241, 227, 0.7) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(245, 241, 227, 0.7) 1px, transparent 1px);
-    background-size: 20px 20px;
-    opacity: 0.3;
-    pointer-events: none;
-  }
+  /* Hide scrollbar for all browsers */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
 `;
 
+// Make ClipCorner stretch to modal's full width/height
 const ClipCorner = styled.div`
   position: absolute;
-  width: 20px;
-  height: 20px;
+  width: 40px;
+  height: 40px;
   background-color: #1a1a1a;
   z-index: 2;
-  
   ${({ position }) => {
     if (position === 'top-left') {
       return `
@@ -217,6 +209,10 @@ const ClipCorner = styled.div`
       `;
     }
   }}
+  @media (max-width: 768px) {
+    width: 24px;
+    height: 24px;
+  }
 `;
 
 const FilmGrain = styled.div`
@@ -346,28 +342,32 @@ const TypewriterCursor = styled.span`
 
 const ConfidentialStamp = styled(motion.div)`
   position: absolute;
-  top: 50%;
+  top: 20%;
   left: 20%;
-  transform: translate(-50%, -50%) rotate(-20deg);
+  transform: translate(-50%, -50%) rotate(-8deg);
   font-family: 'Impact', sans-serif;
-  font-size: 4rem;
+  font-size: 7vw;
+  min-font-size: 2.5rem;
   color: rgba(139, 0, 0, 0.6);
-  border: 5px solid rgba(139, 0, 0, 0.6);
-  padding: 0.5rem 1rem;
+  border: 7px solid rgba(139, 0, 0, 0.6);
+  padding: 0.7rem 2.5rem;
   text-transform: uppercase;
-  letter-spacing: 2px;
+  letter-spacing: 4px;
   pointer-events: none;
-  z-index: 1;
-  opacity: 0.8;
+  z-index: 10;
+  opacity: 0.85;
   text-align: center;
-  
+  background: transparent;
+
   @media (max-width: 768px) {
-    font-size: 3rem;
+    font-size: 12vw;
+    border-width: 4px;
+    padding: 0.5rem 1.2rem;
   }
-  
-  @media (max-width: 576px) {
-    font-size: 2rem;
+  @media (max-width: 480px) {
+    font-size: 16vw;
     border-width: 3px;
+    padding: 0.3rem 0.5rem;
   }
 `;
 
@@ -413,4 +413,4 @@ const FooterDecoration = styled.div`
   opacity: 0.5;
 `;
 
-export default IntroModal; 
+export default IntroModal;

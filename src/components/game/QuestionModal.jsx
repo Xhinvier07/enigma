@@ -71,6 +71,16 @@ const QuestionModal = ({
     }
   };
 
+  // Convert difficulty to points
+  const getPoints = (difficulty) => {
+    switch (difficulty) {
+      case 'easy': return 50;
+      case 'medium': return 100;
+      case 'hard': return 200;
+      default: return 0;
+    }
+  };
+
   if (!question) return null;
 
   return (
@@ -88,9 +98,9 @@ const QuestionModal = ({
           >
             <FilmGrain />
             <ModalHeader>
-              <DifficultyIndicator difficulty={question.difficulty}>
-                {question.difficulty.toUpperCase()}
-              </DifficultyIndicator>
+              <PointsIndicator>
+                {getPoints(question.difficulty)} POINTS
+              </PointsIndicator>
               <h2>Case File #{question.id}</h2>
             </ModalHeader>
 
@@ -184,12 +194,16 @@ const ModalContainer = styled(motion.div)`
   position: relative;
   
   &::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
   
   &::-webkit-scrollbar-track {
-    background: rgba(139, 69, 19, 0.1);
-    border-radius: 4px;
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--primary-dark-brown);
+    border-radius: 3px;
   }
   
   &::-webkit-scrollbar-thumb {
@@ -448,4 +462,18 @@ const HintButton = styled(motion.button)`
   }
 `;
 
-export default QuestionModal; 
+export default QuestionModal;
+
+// Replace DifficultyIndicator with PointsIndicator
+const PointsIndicator = styled.div`
+  display: inline-block;
+  font-family: 'Special Elite', cursive;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+  padding: 0.2rem 0.8rem;
+  letter-spacing: 1px;
+  border-radius: 4px;
+  border: 1px solid var(--dark-accents);
+  background-color: var(--primary-dark-brown);
+  color: var(--aged-paper);
+`;

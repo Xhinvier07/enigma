@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import './cursor.css' // Add this import
 import App from './App.jsx'
 
 // Create a client for React Query

@@ -1,0 +1,7 @@
+html, body {
+  cursor: url('./assets/stylus.png') 4 4, auto !important;
+}
+
+button, [role="button"], a, .pointer, .clickable {
+  cursor: url('./assets/magnifying.png') 8 8, pointer !important;
+}

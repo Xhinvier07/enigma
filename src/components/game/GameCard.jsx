@@ -35,6 +35,16 @@ const GameCard = ({
     }, 600);
   };
 
+  // Convert difficulty to points
+  const getPoints = (difficulty) => {
+    switch (difficulty) {
+      case 'easy': return 50;
+      case 'medium': return 100;
+      case 'hard': return 200;
+      default: return 0;
+    }
+  };
+
   return (
     <CardContainer
       initial={{ opacity: 0, y: 20 }}
@@ -47,9 +57,9 @@ const GameCard = ({
           <CardNumber>{index + 1}</CardNumber>
           {isCompleted && <CompletedStamp>SOLVED</CompletedStamp>}
           {!isCompleted && (
-            <DifficultyBadge difficulty={question.difficulty}>
-              {question.difficulty}
-            </DifficultyBadge>
+            <PointsBadge>
+              {getPoints(question.difficulty)}
+            </PointsBadge>
           )}
         </CardFront>
         <CardBack>
@@ -71,12 +81,12 @@ const CardContainer = styled(motion.div)`
 
 const CardInner = styled.div`
   position: relative;
-  width: 100%;
+  width: 110%;
   height: 100%;
   transition: transform 0.6s;
   transform-style: preserve-3d;
   transform: ${props => props.isFlipped ? 'rotateY(180deg)' : 'rotateY(0)'};
-  box-shadow: var(--shadow-medium);
+  box-shadow: none;
 `;
 
 const CardSide = styled.div`
@@ -90,29 +100,16 @@ const CardSide = styled.div`
   justify-content: center;
   align-items: center;
   padding: 1rem;
-  border: 2px solid var(--dark-accents);
-  background-color: var(--aged-paper);
-  background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.15" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%" height="100%" filter="url(%23noise)" opacity="0.4"/%3E%3C/svg%3E');
-  background-repeat: repeat;
+  border: none;
+  background-color: transparent;
+  background-size: cover;
+  background-position: center;
   transition: all 0.3s ease;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 5px;
-    left: 5px;
-    right: 5px;
-    bottom: 5px;
-    border: 1px dashed var(--secondary-brown);
-    border-radius: 5px;
-    opacity: 0.4;
-    z-index: 0;
-    pointer-events: none;
-  }
 `;
 
 const CardFront = styled(CardSide)`
   transform: rotateY(0deg);
+  background-image: url('/src/assets/gamecard.png');
   
   &:hover {
     box-shadow: var(--shadow-heavy);
@@ -122,7 +119,7 @@ const CardFront = styled(CardSide)`
 
 const CardBack = styled(CardSide)`
   transform: rotateY(180deg);
-  background-color: var(--vintage-sepia);
+  background-image: url('/src/assets/gamecard.png');
 `;
 
 const CardNumber = styled.div`
@@ -143,33 +140,20 @@ const QuestionIcon = styled.div`
   opacity: 0.7;
 `;
 
-const DifficultyBadge = styled.div`
+// Updated PointsBadge - moved to top left with new color
+const PointsBadge = styled.div`
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;
   font-family: 'Special Elite', cursive;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  font-size: 0.9rem;
+  font-weight: bold;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  background-color: ${props => {
-    switch (props.difficulty) {
-      case 'easy': return 'rgba(76, 175, 80, 0.2)';
-      case 'medium': return 'rgba(255, 152, 0, 0.2)';
-      case 'hard': return 'rgba(244, 67, 54, 0.2)';
-      default: return 'rgba(0, 0, 0, 0.1)';
-    }
-  }};
-  color: ${props => {
-    switch (props.difficulty) {
-      case 'easy': return '#2e7d32';
-      case 'medium': return '#e65100';
-      case 'hard': return '#c62828';
-      default: return 'var(--dark-accents)';
-    }
-  }};
-  border: 1px solid currentColor;
+  background-color: #9a4221;
+  color: white;
+  border: none;
+  z-index: 2;
 `;
 
 const CompletedStamp = styled.div`
@@ -188,4 +172,4 @@ const CompletedStamp = styled.div`
   pointer-events: none;
 `;
 
-export default GameCard; 
+export default GameCard;
