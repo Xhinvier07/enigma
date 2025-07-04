@@ -57,7 +57,7 @@ const GameBoard = () => {
         
         // Set game end time (30 minutes from now)
         const endTime = new Date();
-        endTime.setMinutes(endTime.getMinutes() + 0.5); // 30-minute game
+        endTime.setMinutes(endTime.getMinutes() + 5); // 30-minute game
         setGameEndTime(endTime);
       } catch (err) {
         console.error('Error initializing game:', err);
@@ -144,6 +144,13 @@ const GameBoard = () => {
       }
     }
   };
+
+  // Handle end game early
+  const handleEndGameEarly = () => {
+    if (window.confirm('Are you sure you want to end the game? Your current score will be submitted.')) {
+      handleGameEnd();
+    }
+  };
   
   // Handle logout
   const handleLogout = () => {
@@ -187,10 +194,13 @@ const GameBoard = () => {
             <PointsValue>{points}</PointsValue>
           </PointsDisplay>
           
-          <GameTimer 
-            endTime={gameEndTime} 
-            onTimeUp={handleGameEnd} 
-          />
+          <TimerContainer>
+            <GameTimer 
+              endTime={gameEndTime} 
+              onTimeUp={handleGameEnd} 
+            />
+            <EndGameButton onClick={handleEndGameEarly}>End Game </EndGameButton>
+          </TimerContainer>
         </GameStats>
       </TopBar>
       
@@ -370,7 +380,7 @@ const DetectiveName = styled.div`
 
 const GameStats = styled.div`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 1.5rem;
   
   @media (max-width: 768px) {
@@ -794,6 +804,35 @@ const RankStudentScore = styled.div`
   color: var(--primary-dark-brown);
   font-weight: bold;
   margin-left: 1rem;
+`;
+
+const TimerContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const EndGameButton = styled.button`
+  font-family: 'Special Elite', cursive;
+  font-size: 0.8rem;
+  color: var(--aged-paper);
+  background-color: #a83232;
+  border: none;
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-light);
+  
+  &:hover {
+    background-color: #8a2828;
+    transform: translateY(-2px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
 `;
 
 export default GameBoard;
