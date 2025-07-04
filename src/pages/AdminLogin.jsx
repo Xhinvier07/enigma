@@ -107,7 +107,7 @@ const AdminLoginContainer = styled.div`
   justify-content: center;
   align-items: center;
   background-color: var(--aged-paper);
-  background-image: url('/bg1.png');
+  background-image: url('/bg2.png');
   background-size: cover;
   background-position: center;
   position: relative;
