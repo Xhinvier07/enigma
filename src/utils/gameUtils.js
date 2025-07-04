@@ -8,8 +8,37 @@ import * as dbUtils from './dbUtils';
  */
 export const fetchQuestions = async () => {
   try {
-    const questions = await dbUtils.fetchQuestions();
-    return questions || [];
+    // Fetch all active questions
+    const allQuestions = await dbUtils.fetchQuestions();
+    if (!allQuestions || allQuestions.length === 0) {
+      return [];
+    }
+    
+    // Separate questions by difficulty
+    const easyQuestions = allQuestions.filter(q => q.difficulty === 'easy');
+    const mediumQuestions = allQuestions.filter(q => q.difficulty === 'medium');
+    const hardQuestions = allQuestions.filter(q => q.difficulty === 'hard');
+    
+    // Shuffle each difficulty group
+    const shuffledEasy = shuffleArray(easyQuestions);
+    const shuffledMedium = shuffleArray(mediumQuestions);
+    const shuffledHard = shuffleArray(hardQuestions);
+    
+    // Take the required number of questions from each difficulty
+    // If not enough questions of a difficulty, take all available
+    const selectedEasy = shuffledEasy.slice(0, 7);
+    const selectedMedium = shuffledMedium.slice(0, 5);
+    const selectedHard = shuffledHard.slice(0, 3);
+    
+    // Combine all selected questions
+    const selectedQuestions = [
+      ...selectedEasy,
+      ...selectedMedium,
+      ...selectedHard
+    ];
+    
+    // Final shuffle to mix difficulties
+    return shuffleArray(selectedQuestions);
   } catch (err) {
     console.error('Unexpected error fetching questions:', err);
     return [];

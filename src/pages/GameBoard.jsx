@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { fetchQuestions, shuffleArray, verifyAnswer, updateStudentScore } from '../utils/gameUtils';
+import { fetchQuestions, shuffleArray, verifyAnswer, updateStudentScore, getLeaderboard } from '../utils/gameUtils';
 import { getStudentSession, logoutStudent } from '../utils/authUtils';
 
 // Components
@@ -28,6 +28,8 @@ const GameBoard = () => {
   const [points, setPoints] = useState(0);
   const [gameEndTime, setGameEndTime] = useState(null);
   const [gameEnded, setGameEnded] = useState(false);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [showLeaderboard, setShowLeaderboard] = useState(true);
   
   // Fetch student session and questions on mount
   useEffect(() => {
@@ -55,7 +57,7 @@ const GameBoard = () => {
         
         // Set game end time (30 minutes from now)
         const endTime = new Date();
-        endTime.setMinutes(endTime.getMinutes() + 5); // 30-minute game
+        endTime.setMinutes(endTime.getMinutes() + 0.5); // 30-minute game
         setGameEndTime(endTime);
       } catch (err) {
         console.error('Error initializing game:', err);
@@ -129,15 +131,29 @@ const GameBoard = () => {
   };
   
   // Handle game end
-  const handleGameEnd = () => {
+  const handleGameEnd = async () => {
     setGameEnded(true);
-    // Additional end-game logic could be added here
+    
+    // Fetch leaderboard data for the student's section
+    if (studentData?.section) {
+      try {
+        const leaderboardData = await getLeaderboard(studentData.section);
+        setLeaderboard(leaderboardData);
+      } catch (err) {
+        console.error('Error fetching leaderboard:', err);
+      }
+    }
   };
   
   // Handle logout
   const handleLogout = () => {
     logoutStudent();
     navigate('/');
+  };
+
+  // Toggle between leaderboard and game summary
+  const toggleLeaderboard = () => {
+    setShowLeaderboard(!showLeaderboard);
   };
   
   if (loading) {
@@ -189,10 +205,85 @@ const GameBoard = () => {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <h2>Investigation Complete</h2>
-            <p>Time's up! You've solved {completedQuestions.length} out of {questions.length} cases.</p>
-            <FinalScore>Total Score: {points}</FinalScore>
-            <GameOverButton onClick={handleLogout}>Return to HQ</GameOverButton>
+            {showLeaderboard ? (
+              <>
+                <LeaderboardTitle>
+                  <TrophyIcon>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M5 3h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4v-3H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm13 2h-4v10a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V5zm-6 0H6v10a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V5zM5 5v3h2V5H5zm12 0v3h2V5h-2z"/>
+                    </svg>
+                  </TrophyIcon>
+                  <h2>Class Leaderboard</h2>
+                  <SectionDisplay>{studentData?.section}</SectionDisplay>
+                </LeaderboardTitle>
+                
+                <TopThreeGrid>
+                  {leaderboard.slice(0, 3).map((student, index) => (
+                    <TopThreeItem key={student.id} position={index + 1} isCurrentUser={student.id === studentData?.studentId}>
+                      <RankBadge position={index + 1}>
+                        {index === 0 ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                          </svg>
+                        ) : index === 1 ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                          </svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                          </svg>
+                        )}
+                      </RankBadge>
+                      <RankNumber>{index + 1}</RankNumber>
+                      <StudentName>{student.name}</StudentName>
+                      <StudentScore>{student.points}</StudentScore>
+                    </TopThreeItem>
+                  ))}
+                </TopThreeGrid>
+                
+                <OtherRankingsContainer>
+                  {leaderboard.slice(3, 10).map((student, index) => (
+                    <RankingItem key={student.id} isCurrentUser={student.id === studentData?.studentId}>
+                      <RankPosition>{index + 4}</RankPosition>
+                      <RankStudentName>{student.name}</RankStudentName>
+                      <RankStudentScore>{student.points}</RankStudentScore>
+                    </RankingItem>
+                  ))}
+                </OtherRankingsContainer>
+              </>
+            ) : (
+              <>
+                <h2>Investigation Complete</h2>
+                <p>Time's up! You've solved {completedQuestions.length} out of {questions.length} cases.</p>
+                <FinalScore>Total Score: {points}</FinalScore>
+              </>
+            )}
+            
+            <ButtonContainer>
+              <LeaderboardToggleButton onClick={toggleLeaderboard}>
+                {showLeaderboard ? (
+                  <>
+                    <SummaryIcon>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 4h18v2H3V4zm0 7h12v2H3v-2zm0 7h18v2H3v-2z"/>
+                      </svg>
+                    </SummaryIcon>
+                    Show Summary
+                  </>
+                ) : (
+                  <>
+                    <LeaderboardIcon>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7.5 21L2 15.5L3.4 14.1L7.5 18.2L20.6 5.1L22 6.5L7.5 21Z"/>
+                      </svg>
+                    </LeaderboardIcon>
+                    Show Leaderboard
+                  </>
+                )}
+              </LeaderboardToggleButton>
+              <GameOverButton onClick={handleLogout}>Return to HQ</GameOverButton>
+            </ButtonContainer>
           </GameOverCard>
         </GameOverContainer>
       ) : (
@@ -437,7 +528,7 @@ const GameOverCard = styled(motion.div)`
   position: relative;
   
   h2 {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Yeseva One', serif;
     font-size: 2rem;
     color: var(--primary-dark-brown);
     margin-bottom: 1.5rem;
@@ -477,17 +568,30 @@ const FinalScore = styled.div`
   display: inline-block;
 `;
 
+const ButtonContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  
+  @media (max-width: 500px) {
+    flex-direction: column;
+    align-items: center;
+  }
+`;
+
 const GameOverButton = styled.button`
   font-family: 'Special Elite', cursive;
   background-color: var(--primary-dark-brown);
   color: var(--aged-paper);
   border: 2px solid var(--dark-accents);
-  padding: 1rem 2.5rem;
-  font-size: 1.2rem;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.3s ease;
   border-radius: 4px;
   box-shadow: var(--shadow-medium);
+  flex: 1;
   
   &:hover {
     background-color: var(--secondary-brown);
@@ -498,6 +602,198 @@ const GameOverButton = styled.button`
   &:active {
     transform: translateY(-1px);
   }
+`;
+
+const LeaderboardToggleButton = styled(GameOverButton)`
+  background-color: var(--secondary-brown);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+`;
+
+const LeaderboardTitle = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  position: relative;
+  
+  h2 {
+    margin-bottom: 0.5rem;
+  }
+`;
+
+const TrophyIcon = styled.div`
+  width: 50px;
+  height: 50px;
+  color: #d4af37;
+  margin-bottom: 0.5rem;
+  
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+`;
+
+const SummaryIcon = styled.div`
+  width: 20px;
+  height: 20px;
+  color: var(--aged-paper);
+  
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+`;
+
+const LeaderboardIcon = styled.div`
+  width: 20px;
+  height: 20px;
+  color: var(--aged-paper);
+  
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+`;
+
+const SectionDisplay = styled.div`
+  background-color: var(--primary-dark-brown);
+  color: var(--aged-paper);
+  padding: 0.3rem 1rem;
+  border-radius: 20px;
+  font-family: 'Special Elite', cursive;
+  font-size: 0.9rem;
+  display: inline-block;
+`;
+
+const TopThreeGrid = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  
+  @media (max-width: 500px) {
+    gap: 0.5rem;
+  }
+`;
+
+const TopThreeItem = styled.div`
+  width: ${props => props.position === 1 ? '150px' : props.position === 2 ? '150px' : '150px'};
+  height: ${props => props.position === 1 ? '200px' : props.position === 2 ? '180px' : '160px'};
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: ${props => props.isCurrentUser ? 'rgba(154, 66, 33, 0.2)' : 'rgba(210, 180, 140, 0.2)'};
+  border: 2px solid ${props => props.isCurrentUser ? '#9a4221' : 'var(--secondary-brown)'};
+  border-radius: 8px;
+  padding: 1rem 0.5rem;
+  position: relative;
+  box-shadow: var(--shadow-medium);
+  
+  @media (max-width: 500px) {
+    width: ${props => props.position === 1 ? '110px' : props.position === 2 ? '100px' : '90px'};
+    height: ${props => props.position === 1 ? '120px' : props.position === 2 ? '100px' : '90px'};
+  }
+`;
+
+const RankBadge = styled.div`
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: ${props => 
+    props.position === 1 ? '#FFD700' : 
+    props.position === 2 ? '#C0C0C0' : 
+    '#CD7F32'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  
+  svg {
+    width: 20px;
+    height: 20px;
+    color: ${props => 
+      props.position === 1 ? '#9a4221' : 
+      props.position === 2 ? '#555' : 
+      '#8B4513'};
+  }
+`;
+
+const RankNumber = styled.div`
+  font-family: 'Yeseva One', cursive;
+  font-size: 2.2rem;
+  color: #9a4221;
+  margin-bottom: 0.3rem;
+  line-height: 1;
+`;
+
+const StudentName = styled.div`
+  font-family: 'Special Elite', cursive;
+  font-size: 0.9rem;
+  color: var(--dark-accents);
+  text-align: center;
+  margin-bottom: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+`;
+
+const StudentScore = styled.div`
+  font-family: 'Special Elite', cursive;
+  font-size: 1.3rem;
+  color: var(--primary-dark-brown);
+  font-weight: bold;
+`;
+
+const OtherRankingsContainer = styled.div`
+  border: 2px solid var(--secondary-brown);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: rgba(210, 180, 140, 0.1);
+  margin-bottom: 1rem;
+`;
+
+const RankingItem = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 0.7rem 1rem;
+  background-color: ${props => props.isCurrentUser ? 'rgba(154, 66, 33, 0.1)' : 'transparent'};
+  border-bottom: 1px solid var(--secondary-brown);
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const RankPosition = styled.div`
+  font-family: 'Special Elite', cursive;
+  font-size: 1rem;
+  color: #9a4221;
+  width: 30px;
+`;
+
+const RankStudentName = styled.div`
+  font-family: 'Special Elite', cursive;
+  font-size: 0.9rem;
+  color: var(--dark-accents);
+  flex: 1;
+`;
+
+const RankStudentScore = styled.div`
+  font-family: 'Special Elite', cursive;
+  font-size: 1rem;
+  color: var(--primary-dark-brown);
+  font-weight: bold;
+  margin-left: 1rem;
 `;
 
 export default GameBoard;
