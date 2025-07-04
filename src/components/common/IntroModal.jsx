@@ -32,7 +32,7 @@ const IntroModal = ({
       const timeout = setTimeout(() => {
         setTypedContent(prev => prev + content[currentIndex]);
         setCurrentIndex(prev => prev + 1);
-      }, 50); // Typing speed
+      }, 500); // Typing speed
 
       return () => clearTimeout(timeout);
     } else {
