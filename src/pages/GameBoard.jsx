@@ -381,6 +381,10 @@ const GameBoard = () => {
         points={feedbackResult.points}
         onClose={handleFeedbackClose}
       />
+      
+      <FooterTrademark>
+        Developed by Detective <XhinvierName>Xhinvier</XhinvierName>
+      </FooterTrademark>
     </GameContainer>
   );
 };
@@ -889,6 +893,21 @@ const EndGameButton = styled.button`
   &:active {
     transform: translateY(0);
   }
+`;
+
+const FooterTrademark = styled.div`
+  font-family: 'Special Elite', cursive;
+  font-size: 0.85rem;
+  color: var(--secondary-brown);
+  text-align: center;
+  padding: 1.5rem 0;
+  opacity: 0.8;
+  margin-top: 2rem;
+`;
+
+const XhinvierName = styled.span`
+  font-weight: bold;
+  color: var(--primary-dark-brown);
 `;
 
 export default GameBoard;

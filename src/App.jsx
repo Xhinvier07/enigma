@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import GlobalStyles from './styles/GlobalStyles';
 import { getStudentSession } from './utils/authUtils';
 import styled from 'styled-components';
@@ -67,6 +68,7 @@ function App() {
           } />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <Analytics />
       </Router>
     </>
   );
