@@ -114,6 +114,17 @@ const AuthPage = () => {
           <h2>CASE FILE ACCESS</h2>
         </CardHeader>
         
+        <BriefcaseSection>
+          <BriefcaseIcon>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 6h-3V4c0-1.11-.89-2-2-2H9c-1.11 0-2 .89-2 2v2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zM9 4h6v2H9V4zm11 15H4v-2h16v2zm0-5H4V8h3v2h2V8h6v2h2V8h3v6z"/>
+            </svg>
+          </BriefcaseIcon>
+          <BriefcaseText>
+            Before starting your investigation, get your <BriefcaseLink href="/HERE.zip" download>briefcase materials</BriefcaseLink> with all the evidence and tools needed for this case.
+          </BriefcaseText>
+        </BriefcaseSection>
+        
         {!showConfirmation ? (
           <Formik
             initialValues={{ accessCode: '', name: '' }}
@@ -235,6 +246,60 @@ const SealIcon = styled.span`
 
 const SealText = styled.span`
   font-weight: bold;
+`;
+
+const BriefcaseSection = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background-color: rgba(210, 180, 140, 0.13);
+  border: 1.5px dashed #bfa76a;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 2;
+`;
+
+const BriefcaseIcon = styled.div`
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  color: #bfa76a;
+  
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+`;
+
+const BriefcaseText = styled.p`
+  font-family: 'Crimson Text', serif;
+  font-size: 1rem;
+  color: var(--primary-dark-brown);
+  margin: 0;
+  line-height: 1.4;
+`;
+
+const BriefcaseLink = styled.a`
+  color: #a83232;
+  font-weight: bold;
+  text-decoration: underline;
+  position: relative;
+  transition: all 0.2s;
+  
+  &:hover {
+    color: #8a2828;
+    text-decoration: none;
+  }
+  
+  &::after {
+    content: '📁';
+    font-size: 0.9em;
+    margin-left: 0.3em;
+    position: relative;
+    top: -1px;
+  }
 `;
 
 const PaperClip = styled.div`
