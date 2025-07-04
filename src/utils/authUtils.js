@@ -5,92 +5,176 @@ import * as dbUtils from './dbUtils';
  * Validates an access code against the database
  * 
  * @param {string} accessCode - Access code to validate
- * @returns {Promise<{ valid: boolean, section: string|null, error: string|null }>}
+ * @returns {Promise<{ valid: boolean, section: string|null, error: string|null, groupExists: boolean, groupId: string|null }>}
  */
 export const validateAccessCode = async (accessCode) => {
   try {
     if (!accessCode || accessCode.trim() === '') {
-      return { valid: false, section: null, error: 'Access code cannot be empty' };
+      return { valid: false, section: null, error: 'Access code cannot be empty', groupExists: false, groupId: null };
     }
 
     // Use the dbUtils function to validate the access code
     const accessCodeData = await dbUtils.validateAccessCode(accessCode);
 
     if (!accessCodeData) {
-      return { valid: false, section: null, error: 'Invalid access code' };
+      return { valid: false, section: null, error: 'Invalid access code', groupExists: false, groupId: null };
     }
 
-    return { valid: true, section: accessCodeData.section, error: null };
+    // Check if a group with this access code already exists
+    const existingGroup = await dbUtils.checkExistingGroup(accessCode);
+    
+    // Return information about existing group if found
+    if (existingGroup) {
+      return { 
+        valid: true, 
+        section: accessCodeData.section, 
+        error: null,
+        groupExists: true,
+        groupId: existingGroup.id
+      };
+    }
+
+    return { 
+      valid: true, 
+      section: accessCodeData.section, 
+      error: null,
+      groupExists: false,
+      groupId: null
+    };
   } catch (err) {
     console.error('Unexpected error during access code validation:', err);
-    return { valid: false, section: null, error: 'An unexpected error occurred' };
+    return { 
+      valid: false, 
+      section: null, 
+      error: 'An unexpected error occurred',
+      groupExists: false,
+      groupId: null
+    };
   }
 };
 
 /**
- * Registers a student with their access code and name
+ * Registers a group with their access code and members
  * 
- * @param {Object} studentData - Student information
- * @param {string} studentData.name - Student's name
- * @param {string} studentData.accessCode - Access code
- * @param {string} studentData.section - Section name
- * @returns {Promise<{ success: boolean, studentId: string|null, error: string|null }>}
+ * @param {Object} groupData - Group information
+ * @param {Array<string>} groupData.members - Array of member names
+ * @param {string} groupData.accessCode - Access code
+ * @param {string} groupData.section - Section name
+ * @param {string} groupData.teamName - Team name
+ * @returns {Promise<{ success: boolean, groupId: string|null, error: string|null }>}
  */
-export const registerStudent = async ({ name, accessCode, section }) => {
+export const registerGroup = async ({ members, accessCode, section, teamName }) => {
   try {
-    if (!name || name.trim() === '') {
-      return { success: false, studentId: null, error: 'Name cannot be empty' };
+    console.log('Registering group with data:', { members, accessCode, section, teamName });
+    
+    if (!members || members.length === 0) {
+      return { success: false, groupId: null, error: 'At least one member name is required' };
+    }
+
+    if (!teamName || teamName.trim() === '') {
+      return { success: false, groupId: null, error: 'Team name is required' };
     }
 
     // First validate the access code
     const validationResult = await validateAccessCode(accessCode);
+    console.log('Access code validation result:', validationResult);
+    
     if (!validationResult.valid) {
-      return { success: false, studentId: null, error: validationResult.error };
+      return { success: false, groupId: null, error: validationResult.error };
+    }
+    
+    let groupId = null;
+
+    // Check if a group with this access code already exists
+    if (validationResult.groupExists && validationResult.groupId) {
+      console.log('Group exists, joining session with ID:', validationResult.groupId);
+      // Group exists, we'll join the existing session
+      groupId = validationResult.groupId;
+      
+      // Update the group with new members if they don't already exist
+      await dbUtils.addGroupMembers(groupId, members);
+    } else {
+      console.log('Creating new group with team name:', teamName);
+      // Create a new group
+      const groupData = await dbUtils.registerGroup({
+        members,
+        accessCode,
+        section,
+        teamName
+      });
+
+      if (!groupData) {
+        console.error('Failed to register group - no data returned');
+        return { success: false, groupId: null, error: 'Failed to register group' };
+      }
+      
+      groupId = groupData.id;
+      console.log('New group created with ID:', groupId);
     }
 
-    // Use the dbUtils function to register the student
-    const studentData = await dbUtils.registerStudent({
-      name,
+    // Store the group ID in local storage for session management
+    console.log('Saving session data to localStorage:', {
+      groupId,
+      memberName: members[0],
+      section,
       accessCode,
-      section
+      teamName
     });
+    
+    localStorage.setItem('enigma_group_id', groupId);
+    localStorage.setItem('enigma_member_name', members[0]); // Store first member as the current user
+    localStorage.setItem('enigma_section', section);
+    localStorage.setItem('enigma_access_code', accessCode);
+    localStorage.setItem('enigma_team_name', teamName);
 
-    if (!studentData) {
-      return { success: false, studentId: null, error: 'Failed to register student' };
+    // Verify localStorage was set correctly
+    const storedGroupId = localStorage.getItem('enigma_group_id');
+    if (storedGroupId !== groupId) {
+      console.error(`LocalStorage validation failed: expected groupId ${groupId}, got ${storedGroupId}`);
     }
 
-    // Store the student ID in local storage for session management
-    localStorage.setItem('enigma_student_id', studentData.id);
-    localStorage.setItem('enigma_student_name', name);
-    localStorage.setItem('enigma_section', section);
-
-    return { success: true, studentId: studentData.id, error: null };
+    return { success: true, groupId: groupId, error: null };
   } catch (err) {
-    console.error('Unexpected error during student registration:', err);
-    return { success: false, studentId: null, error: 'An unexpected error occurred' };
+    console.error('Unexpected error during group registration:', err);
+    return { success: false, groupId: null, error: 'An unexpected error occurred' };
   }
 };
 
 /**
- * Checks if a student is already registered/logged in
+ * Checks if a user is already registered/logged in
  * 
- * @returns {Object} Student session information
+ * @returns {Object} Group session information
  */
 export const getStudentSession = () => {
   try {
-    const studentId = localStorage.getItem('enigma_student_id');
-    const studentName = localStorage.getItem('enigma_student_name');
+    const groupId = localStorage.getItem('enigma_group_id');
+    const memberName = localStorage.getItem('enigma_member_name');
     const section = localStorage.getItem('enigma_section');
+    const accessCode = localStorage.getItem('enigma_access_code');
+    const teamName = localStorage.getItem('enigma_team_name');
 
-    if (!studentId || !studentName || !section) {
+    console.log('Getting student session from localStorage:', {
+      groupId,
+      memberName,
+      section,
+      accessCode,
+      teamName
+    });
+
+    if (!groupId || !memberName || !section || !accessCode) {
+      console.log('Incomplete session data, returning isLoggedIn: false');
       return { isLoggedIn: false };
     }
 
     return {
       isLoggedIn: true,
-      studentId,
-      studentName,
-      section
+      studentId: groupId, // For backward compatibility
+      groupId,
+      studentName: memberName, // For backward compatibility
+      memberName,
+      section,
+      accessCode,
+      teamName
     };
   } catch (err) {
     console.error('Error checking student session:', err);
@@ -99,12 +183,14 @@ export const getStudentSession = () => {
 };
 
 /**
- * Logs out the current student
+ * Logs out the current student/group member
  */
 export const logoutStudent = () => {
-  localStorage.removeItem('enigma_student_id');
-  localStorage.removeItem('enigma_student_name');
+  localStorage.removeItem('enigma_group_id');
+  localStorage.removeItem('enigma_member_name');
   localStorage.removeItem('enigma_section');
+  localStorage.removeItem('enigma_access_code');
+  localStorage.removeItem('enigma_team_name');
 };
 
 /**
@@ -143,7 +229,7 @@ export const validateAdmin = async (username, password) => {
     if (!data) {
       return { valid: false, error: 'Invalid username or password' };
     }
-    
+
     return { valid: true, error: null };
   } catch (err) {
     console.error('Admin validation error:', err);

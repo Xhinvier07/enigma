@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { Formik, Form, Field, ErrorMessage } from 'formik';
+import { Formik, Form, Field, ErrorMessage, FieldArray } from 'formik';
 import * as Yup from 'yup';
-import { validateAccessCode, registerStudent } from '../utils/authUtils';
+import { validateAccessCode, registerGroup } from '../utils/authUtils';
 import bgLanding from '../assets/bg_landing.png';
 import magnifier from '../assets/magnifying.png';
 
@@ -16,10 +16,11 @@ const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [studentData, setStudentData] = useState({
-    name: '',
+  const [groupData, setGroupData] = useState({
+    members: [''],
     accessCode: '',
-    section: ''
+    section: '',
+    teamName: ''
   });
 
   // Validation schema for the form
@@ -27,9 +28,13 @@ const AuthPage = () => {
     accessCode: Yup.string()
       .required('Access code is required')
       .min(4, 'Access code must be at least 4 characters'),
-    name: Yup.string()
-      .required('Your name is required')
-      .min(2, 'Name must be at least 2 characters')
+    teamName: Yup.string()
+      .required('Team name is required')
+      .min(2, 'Team name must be at least 2 characters'),
+    members: Yup.array()
+      .of(Yup.string().required('Name is required').min(2, 'Name must be at least 2 characters'))
+      .min(1, 'At least one member is required')
+      .max(8, 'Maximum 8 members allowed')
   });
 
   // Handle form submission
@@ -38,6 +43,15 @@ const AuthPage = () => {
     setLoading(true);
     
     try {
+      // Filter out empty member names
+      const filteredMembers = values.members.filter(name => name && name.trim() !== '');
+      
+      if (filteredMembers.length === 0) {
+        setError('At least one member name is required');
+        setLoading(false);
+        return;
+      }
+      
       // Validate access code first
       const result = await validateAccessCode(values.accessCode);
       
@@ -48,10 +62,11 @@ const AuthPage = () => {
       }
       
       // Set data for confirmation
-      setStudentData({
-        name: values.name,
+      setGroupData({
+        members: filteredMembers,
         accessCode: values.accessCode,
-        section: result.section
+        section: result.section,
+        teamName: values.teamName
       });
       
       // Show confirmation modal
@@ -69,7 +84,7 @@ const AuthPage = () => {
     setLoading(true);
     
     try {
-      const result = await registerStudent(studentData);
+      const result = await registerGroup(groupData);
       
       if (!result.success) {
         setError(result.error);
@@ -127,11 +142,11 @@ const AuthPage = () => {
         
         {!showConfirmation ? (
           <Formik
-            initialValues={{ accessCode: '', name: '' }}
+            initialValues={{ accessCode: '', teamName: '', members: [''] }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
           >
-            {({ isSubmitting }) => (
+            {({ values, isSubmitting, touched, errors }) => (
               <StyledForm>
                 {error && <ErrorAlert>{error}</ErrorAlert>}
                 
@@ -147,15 +162,63 @@ const AuthPage = () => {
                 </FieldGroup>
                 
                 <FieldGroup>
-                  <Label htmlFor="name">Detective Name</Label>
+                  <Label htmlFor="teamName">Team Name</Label>
                   <StyledField 
-                    id="name"
-                    name="name" 
+                    id="teamName"
+                    name="teamName" 
                     type="text" 
-                    placeholder="Enter your name" 
+                    placeholder="Enter your team name" 
                   />
-                  <StyledErrorMessage name="name" component="div" />
+                  <StyledErrorMessage name="teamName" component="div" />
                 </FieldGroup>
+
+                <FieldArray name="members">
+                  {({ remove, push }) => (
+                    <div>
+                      <MembersHeader>
+                        <Label>Group Members</Label>
+                        {values.members.length < 8 && (
+                          <AddMemberButton
+                            type="button"
+                            onClick={() => push('')}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            + Add Member
+                          </AddMemberButton>
+                        )}
+                      </MembersHeader>
+                      
+                      <MembersList>
+                        {values.members.map((member, index) => (
+                          <MemberItem key={index}>
+                            <MemberField>
+                              <StyledField
+                                name={`members.${index}`}
+                                type="text"
+                                placeholder={`Member ${index + 1} name`}
+                              />
+                              {index > 0 && (
+                                <RemoveMemberButton
+                                  type="button"
+                                  onClick={() => remove(index)}
+                                  aria-label="Remove member"
+                                >
+                                  ✕
+                                </RemoveMemberButton>
+                              )}
+                            </MemberField>
+                            <StyledErrorMessage name={`members.${index}`} component="div" />
+                          </MemberItem>
+                        ))}
+                      </MembersList>
+                      
+                      {touched.members && errors.members && typeof errors.members === 'string' && (
+                        <ErrorMessage name="members" component={StyledErrorMessage} />
+                      )}
+                    </div>
+                  )}
+                </FieldArray>
                 
                 <SubmitButton 
                   type="submit" 
@@ -171,17 +234,26 @@ const AuthPage = () => {
           </Formik>
         ) : (
           <ConfirmationContainer>
-            <h3>Confirm Detective Details</h3>
+            <h3>Confirm Group Details</h3>
             
             <InfoGrid>
-              <InfoLabel>Name:</InfoLabel>
-              <InfoValue>{studentData.name}</InfoValue>
-              
               <InfoLabel>Access Code:</InfoLabel>
-              <InfoValue>{studentData.accessCode}</InfoValue>
+              <InfoValue>{groupData.accessCode}</InfoValue>
               
               <InfoLabel>Section:</InfoLabel>
-              <InfoValue>{studentData.section}</InfoValue>
+              <InfoValue>{groupData.section}</InfoValue>
+              
+              <InfoLabel>Team Name:</InfoLabel>
+              <InfoValue>{groupData.teamName}</InfoValue>
+              
+              <InfoLabel>Members:</InfoLabel>
+              <InfoValue>
+                <MembersList>
+                  {groupData.members.map((name, index) => (
+                    <MemberName key={index}>{name}</MemberName>
+                  ))}
+                </MembersList>
+              </InfoValue>
             </InfoGrid>
             
             <p>Once confirmed, you will proceed to the case board.</p>
@@ -246,6 +318,75 @@ const SealIcon = styled.span`
 
 const SealText = styled.span`
   font-weight: bold;
+`;
+
+const MembersHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+`;
+
+const MembersList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`;
+
+const MemberItem = styled.div`
+  margin-bottom: 0.5rem;
+`;
+
+const MemberField = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const RemoveMemberButton = styled.button`
+  background-color: #8b0000;
+  color: white;
+  border: none;
+  width: 30px;
+  height: 36px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0.8;
+  transition: all 0.2s;
+
+  &:hover {
+    opacity: 1;
+  }
+`;
+
+const AddMemberButton = styled(motion.button)`
+  background-color: var(--secondary-brown);
+  color: white;
+  border: none;
+  padding: 0.3rem 0.7rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-family: 'Special Elite', cursive;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+`;
+
+const MemberName = styled.div`
+  padding: 0.3rem 0;
+  border-bottom: 1px dashed #ccc;
+  font-family: 'Crimson Text', serif;
+  
+  &:last-child {
+    border-bottom: none;
+  }
 `;
 
 const BriefcaseSection = styled.div`

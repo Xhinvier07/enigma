@@ -4,12 +4,13 @@ import * as dbUtils from './dbUtils';
 /**
  * Fetches game questions from the database
  * 
+ * @param {number} [seed] - Optional seed for consistent randomization based on access code
  * @returns {Promise<Array>} Array of game questions
  */
-export const fetchQuestions = async () => {
+export const fetchQuestions = async (seed = null) => {
   try {
-    // Fetch all active questions
-    const allQuestions = await dbUtils.fetchQuestions();
+    // Fetch all active questions with optional seed for consistent ordering
+    const allQuestions = await dbUtils.fetchQuestions(seed);
     if (!allQuestions || allQuestions.length === 0) {
       return [];
     }
@@ -19,10 +20,34 @@ export const fetchQuestions = async () => {
     const mediumQuestions = allQuestions.filter(q => q.difficulty === 'medium');
     const hardQuestions = allQuestions.filter(q => q.difficulty === 'hard');
     
-    // Shuffle each difficulty group
-    const shuffledEasy = shuffleArray(easyQuestions);
-    const shuffledMedium = shuffleArray(mediumQuestions);
-    const shuffledHard = shuffleArray(hardQuestions);
+    // If seed is provided, use seeded randomization for consistency across group members
+    // Otherwise, use standard randomization
+    const shuffleWithSeed = (questions) => {
+      if (seed !== null) {
+        // Create a seeded random function
+        const seededRandom = (function() {
+          let s = seed;
+          return function() {
+            s = Math.sin(s) * 10000;
+            return s - Math.floor(s);
+          };
+        })();
+        
+        // Shuffle using the seeded random function
+        const shuffled = [...questions];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(seededRandom() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+      } else {
+        return shuffleArray(questions);
+      }
+    };
+    
+    const shuffledEasy = shuffleWithSeed(easyQuestions);
+    const shuffledMedium = shuffleWithSeed(mediumQuestions);
+    const shuffledHard = shuffleWithSeed(hardQuestions);
     
     // Take the required number of questions from each difficulty
     // If not enough questions of a difficulty, take all available
@@ -31,14 +56,35 @@ export const fetchQuestions = async () => {
     const selectedHard = shuffledHard.slice(0, 3);
     
     // Combine all selected questions
-    const selectedQuestions = [
+    let selectedQuestions = [
       ...selectedEasy,
       ...selectedMedium,
       ...selectedHard
     ];
     
-    // Final shuffle to mix difficulties
-    return shuffleArray(selectedQuestions);
+    // Final shuffle to mix difficulties (using the same seed for consistency)
+    if (seed !== null) {
+      // Create another seeded random function with a slight variation of the seed
+      const finalSeededRandom = (function() {
+        let s = seed + 1000; // Add offset to create different shuffle pattern
+        return function() {
+          s = Math.sin(s) * 10000;
+          return s - Math.floor(s);
+        };
+      })();
+      
+      // Shuffle using the seeded random function
+      const shuffled = [...selectedQuestions];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(finalSeededRandom() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      selectedQuestions = shuffled;
+    } else {
+      selectedQuestions = shuffleArray(selectedQuestions);
+    }
+    
+    return selectedQuestions;
   } catch (err) {
     console.error('Unexpected error fetching questions:', err);
     return [];
@@ -158,34 +204,65 @@ export const getHint = async (questionId, hintIndex) => {
 };
 
 /**
- * Gets the current leaderboard
+ * Gets the current leaderboard, grouping by team name and showing only the highest score per team
  * 
  * @param {string} section - Optional section to filter by
  * @returns {Promise<Array>} Array of leaderboard entries
  */
 export const getLeaderboard = async (section = null) => {
   try {
-    if (!section) {
-      // If no section specified, get all students
-      let query = supabase
-        .from('students')
-        .select('id, name, section, points')
-        .order('points', { ascending: false })
-        .limit(20);
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching leaderboard:', error);
-        return [];
-      }
-
-      return data || [];
-    } else {
-      // If section is specified, use the dbUtils function
-      const leaderboard = await dbUtils.fetchLeaderboard(section);
-      return leaderboard || [];
+    console.log('Fetching leaderboard for section:', section);
+    
+    // Get all students data
+    let query = supabase.from('students').select('id, name, section, points');
+    
+    // Filter by section if provided
+    if (section) {
+      query = query.eq('section', section);
     }
+    
+    // Get all data, sorted by points
+    const { data, error } = await query.order('points', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching leaderboard:', error);
+      return [];
+    }
+    
+    if (!data || data.length === 0) {
+      return [];
+    }
+    
+    console.log(`Fetched ${data.length} leaderboard entries`);
+    
+    // Process the data to keep only the highest score for each team name
+    const teamHighScores = new Map(); // Map to track highest score per team name
+    
+    data.forEach(student => {
+      const teamName = student.name;
+      
+      // Skip entries without a team name
+      if (!teamName) return;
+      
+      // If this team is not in the map yet, or this entry has a higher score, update the map
+      if (!teamHighScores.has(teamName) || student.points > teamHighScores.get(teamName).points) {
+        teamHighScores.set(teamName, student);
+      }
+    });
+    
+    // Convert the Map to an array
+    const consolidatedLeaderboard = Array.from(teamHighScores.values());
+    
+    // Sort by points (highest first)
+    consolidatedLeaderboard.sort((a, b) => b.points - a.points);
+    
+    // Limit to top 10 teams
+    const limitedLeaderboard = consolidatedLeaderboard.slice(0, 10);
+    
+    console.log(`Consolidated leaderboard has ${limitedLeaderboard.length} unique teams`);
+    console.log('Team leaderboard:', limitedLeaderboard);
+    
+    return limitedLeaderboard;
   } catch (err) {
     console.error('Unexpected error fetching leaderboard:', err);
     return [];

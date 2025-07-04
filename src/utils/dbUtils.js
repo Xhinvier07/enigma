@@ -27,9 +27,162 @@ export const validateAccessCode = async (code) => {
 };
 
 /**
+ * Check if a group with the given access code already exists
+ * @param {string} accessCode - The access code to check
+ * @returns {Promise<Object|null>} - The group data or null if not found
+ */
+export const checkExistingGroup = async (accessCode) => {
+  try {
+    console.log(`Checking for existing group with access code: ${accessCode}`);
+    
+    // First try the standard query with group_members filter
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .eq('access_code', accessCode)
+      .is('group_members', 'not.null')  // Only get records that have group members
+      .order('created_at', { ascending: false })  // Get the most recent one first
+      .limit(1);
+    
+    if (error) {
+      console.error('Error in first query for existing group:', error);
+      throw error;
+    }
+    
+    if (data && data.length > 0) {
+      console.log('Found existing group with first query:', data[0]);
+      return data[0];
+    }
+    
+    // If no results, try a more lenient query without the group_members filter
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('students')
+      .select('*')
+      .eq('access_code', accessCode)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    
+    if (fallbackError) {
+      console.error('Error in fallback query for existing group:', fallbackError);
+      return null;
+    }
+    
+    if (fallbackData && fallbackData.length > 0) {
+      console.log('Found existing group with fallback query:', fallbackData[0]);
+      return fallbackData[0];
+    }
+    
+    console.log('No existing group found for access code:', accessCode);
+    return null;
+  } catch (error) {
+    console.error('Error checking existing group:', error);
+    return null;
+  }
+};
+
+/**
+ * Registers a group in the database
+ * @param {Object} group - Group data (members, access_code, section)
+ * @returns {Promise<Object|null>} - The created group data or null if error
+ */
+export const registerGroup = async (group) => {
+  try {
+    // Seed for question randomization based on access code
+    // We'll use a simple hash of the access code to ensure consistent question ordering
+    const accessCodeSeed = hashStringToInt(group.accessCode);
+    
+    const { data, error } = await supabase
+      .from('students')
+      .insert([{
+        name: group.teamName,
+        access_code: group.accessCode,
+        section: group.section,
+        start_time: new Date().toISOString(),
+        group_members: group.members,
+        question_seed: accessCodeSeed
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error registering group:', error);
+    return null;
+  }
+};
+
+/**
+ * Add members to an existing group
+ * @param {string} groupId - The ID of the group to update
+ * @param {Array<string>} newMembers - Array of new member names to add
+ * @returns {Promise<Object|null>} - The updated group data or null if error
+ */
+export const addGroupMembers = async (groupId, newMembers) => {
+  try {
+    // First get current group data
+    const { data: currentGroup, error: fetchError } = await supabase
+      .from('students')
+      .select('group_members, name')
+      .eq('id', groupId)
+      .single();
+    
+    if (fetchError) throw fetchError;
+    
+    // Combine existing and new members without duplicates
+    let currentMembers = currentGroup.group_members || [];
+    
+    // Filter out existing members to avoid duplicates
+    const membersToAdd = newMembers.filter(
+      newMember => !currentMembers.some(
+        existingMember => existingMember.toLowerCase() === newMember.toLowerCase()
+      )
+    );
+    
+    if (membersToAdd.length === 0) {
+      return currentGroup; // No new members to add
+    }
+    
+    const updatedMembers = [...currentMembers, ...membersToAdd];
+    
+    // Update the group with new members
+    const { data, error } = await supabase
+      .from('students')
+      .update({
+        group_members: updatedMembers
+      })
+      .eq('id', groupId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error adding group members:', error);
+    return null;
+  }
+};
+
+/**
+ * Create a simple hash from a string
+ * @param {string} str - String to hash
+ * @returns {number} - Integer hash value
+ */
+function hashStringToInt(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash); // Ensure positive value
+}
+
+/**
  * Registers a student in the database
  * @param {Object} student - Student data (name, access_code, section)
  * @returns {Promise<Object|null>} - The created student data or null if error
+ * @deprecated Use registerGroup instead
  */
 export const registerStudent = async (student) => {
   try {
@@ -40,6 +193,7 @@ export const registerStudent = async (student) => {
         access_code: student.accessCode,
         section: student.section,
         start_time: new Date().toISOString(),
+        group_members: [student.name] // For compatibility with group system
       }])
       .select()
       .single();
@@ -54,9 +208,10 @@ export const registerStudent = async (student) => {
 
 /**
  * Fetches all active questions from the database
+ * @param {number} [seed] - Optional seed for consistent randomization
  * @returns {Promise<Array|null>} - Array of questions or null if error
  */
-export const fetchQuestions = async () => {
+export const fetchQuestions = async (seed = null) => {
   try {
     const { data, error } = await supabase
       .from('questions')
@@ -65,12 +220,46 @@ export const fetchQuestions = async () => {
       .order('difficulty', { ascending: true });
     
     if (error) throw error;
+    
+    if (seed !== null) {
+      // If a seed is provided, we'll use it to ensure consistent randomization
+      const seededRandom = createSeededRandom(seed);
+      return shuffleArrayWithSeed(data, seededRandom);
+    }
+    
     return data;
   } catch (error) {
     console.error('Error fetching questions:', error);
     return null;
   }
 };
+
+/**
+ * Create a seeded random number generator
+ * @param {number} seed - Seed for the random number generator
+ * @returns {Function} - Seeded random number generator function
+ */
+function createSeededRandom(seed) {
+  return function() {
+    const x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+  };
+}
+
+/**
+ * Shuffle array using a seeded random number generator
+ * @param {Array} array - The array to shuffle
+ * @param {Function} randomFunc - Seeded random function
+ * @returns {Array} - Shuffled array
+ */
+function shuffleArrayWithSeed(array, randomFunc) {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(randomFunc() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 /**
  * Verifies an answer for a specific question
@@ -147,7 +336,7 @@ export const fetchLeaderboard = async (section) => {
   try {
     const { data, error } = await supabase
       .from('students')
-      .select('id, name, points, completed_puzzles')
+      .select('id, name, points, completed_puzzles, group_members')
       .eq('section', section)
       .order('points', { ascending: false })
       .limit(10);

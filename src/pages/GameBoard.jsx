@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
@@ -31,33 +31,203 @@ const GameBoard = () => {
   const [gameEnded, setGameEnded] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
   const [showLeaderboard, setShowLeaderboard] = useState(true);
+  const [lastSyncTime, setLastSyncTime] = useState(0);
   
-  // Fetch student session and questions on mount
+  // Fetch student data with caching and update control
+  const fetchStudentData = useCallback(async (groupId) => {
+    if (!groupId) {
+      console.error('No groupId provided to fetchStudentData');
+      return null;
+    }
+
+    try {
+      const now = Date.now();
+      // Don't sync too frequently (minimum 1 second between syncs)
+      if (now - lastSyncTime < 1000) return null;
+      
+      setLastSyncTime(now);
+      
+      console.log(`Fetching group data for groupId: ${groupId}`);
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', groupId)
+        .single();
+      
+      if (error) {
+        console.error('Supabase error fetching group data:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.error('No data returned from Supabase for groupId:', groupId);
+        return null;
+      }
+      
+      console.log('Successfully fetched group data:', data);
+      
+      // Update points from database
+      if (points !== data.points) {
+        setPoints(data.points || 0);
+      }
+      
+      // Update completed puzzles - check if there are new completed puzzles
+      if (data.completed_puzzles && Array.isArray(data.completed_puzzles)) {
+        // Compare current completed questions with new data
+        // Only update if we have new completed questions to prevent unnecessary re-renders
+        const currentCompletedSet = new Set(completedQuestions);
+        const newCompletedQuestions = data.completed_puzzles.filter(id => !currentCompletedSet.has(id));
+        
+        if (newCompletedQuestions.length > 0) {
+          console.log("New completed questions synced from group:", newCompletedQuestions);
+          setCompletedQuestions(data.completed_puzzles);
+        }
+      }
+      
+      // Check if end_time is set
+      if (data.end_time) {
+        const newEndTime = new Date(data.end_time);
+        
+        // Only update if end time changed significantly
+        if (!gameEndTime || Math.abs(newEndTime - gameEndTime) > 1000) {
+          setGameEndTime(newEndTime);
+        }
+        
+        // Check if game has already ended
+        if (new Date() > newEndTime && !gameEnded) {
+          handleGameEnd();
+        }
+      } else if (!gameEndTime) {
+        // If no end_time is set, use default (30 minutes from now)
+        const endTime = new Date();
+        endTime.setMinutes(endTime.getMinutes() + 30);
+        setGameEndTime(endTime);
+        
+        // Update the end time in the database for other group members
+        try {
+          await supabase
+            .from('students')
+            .update({ end_time: endTime.toISOString() })
+            .eq('id', groupId);
+        } catch (endTimeError) {
+          console.error('Error setting end time:', endTimeError);
+        }
+      }
+      
+      return data;
+    } catch (err) {
+      console.error('Error fetching group data:', err);
+      return null;
+    }
+  }, [gameEndTime, completedQuestions, points, gameEnded]);
+  
+  // Fetch group session and questions on mount
   useEffect(() => {
     const initGame = async () => {
       try {
-        // Get student session
+        // Get student/group session
         const session = getStudentSession();
+        console.log('Current session:', session);
+        
         if (!session.isLoggedIn) {
+          console.log('No active session, redirecting to /auth');
           navigate('/auth');
           return;
         }
         
         setStudentData(session);
         
-        // Fetch questions
-        const allQuestions = await fetchQuestions();
+        // Initial fetch of group data including end_time and question_seed
+        console.log('Attempting to fetch group data with groupId:', session.groupId);
+        const groupData = await fetchStudentData(session.groupId);
+        
+        if (!groupData) {
+          console.error('Failed to retrieve group data for groupId:', session.groupId);
+          
+          // Try fetching with access code as a fallback
+          if (session.accessCode) {
+            console.log('Attempting to find group by access code:', session.accessCode);
+            const { data: groupsByCode } = await supabase
+              .from('students')
+              .select('*')
+              .eq('access_code', session.accessCode)
+              .order('created_at', { ascending: false })
+              .limit(1);
+              
+            if (groupsByCode && groupsByCode.length > 0) {
+              console.log('Found group by access code:', groupsByCode[0]);
+              // Update local storage with the correct group ID
+              localStorage.setItem('enigma_group_id', groupsByCode[0].id);
+              // Use this group data instead
+              const updatedSession = getStudentSession();
+              setStudentData(updatedSession);
+              
+              // Continue with this group data
+              const questionSeed = groupsByCode[0].question_seed || 
+                                  (session.accessCode ? hashStringToInt(session.accessCode) : null);
+                
+              if (questionSeed) {
+                console.log(`Using question seed: ${questionSeed} for access code: ${session.accessCode}`);
+                
+                // Set completed questions from database
+                if (groupsByCode[0].completed_puzzles && Array.isArray(groupsByCode[0].completed_puzzles)) {
+                  setCompletedQuestions(groupsByCode[0].completed_puzzles);
+                }
+                
+                // Fetch questions with seed
+                const allQuestions = await fetchQuestions(questionSeed);
+                if (!allQuestions || allQuestions.length === 0) {
+                  setError('No questions available. Please try again later.');
+                  return;
+                }
+                
+                // Use all questions, they'll already be properly shuffled with the seed
+                setQuestions(allQuestions);
+                return;
+              }
+            }
+          }
+          
+          setError('Failed to retrieve group data. Please try again.');
+          return;
+        }
+        
+        // Use the question_seed from the group for consistent ordering
+        // If no seed is stored yet, generate one from the access code
+        let questionSeed = groupData.question_seed;
+        if (!questionSeed && session.accessCode) {
+          // Create a simple hash from the access code
+          questionSeed = hashStringToInt(session.accessCode);
+          
+          // Store this seed for future use
+          try {
+            await supabase
+              .from('students')
+              .update({ question_seed: questionSeed })
+              .eq('id', session.groupId);
+          } catch (seedError) {
+            console.error('Error storing question seed:', seedError);
+            // Continue anyway, we'll use the seed for this session
+          }
+        }
+        
+        console.log(`Using question seed: ${questionSeed} for access code: ${session.accessCode}`);
+        
+        // Set completed questions from database
+        if (groupData.completed_puzzles && Array.isArray(groupData.completed_puzzles)) {
+          setCompletedQuestions(groupData.completed_puzzles);
+        }
+        
+        // Fetch questions with seed for consistent ordering across group members
+        const allQuestions = await fetchQuestions(questionSeed);
         if (!allQuestions || allQuestions.length === 0) {
           setError('No questions available. Please try again later.');
           return;
         }
         
-        // Shuffle and limit to 15 questions
-        const shuffledQuestions = shuffleArray(allQuestions).slice(0, 15);
-        setQuestions(shuffledQuestions);
+        // Use all questions, they'll already be properly shuffled with the seed
+        setQuestions(allQuestions);
         
-        // Initial fetch of student data including end_time
-        await fetchStudentData(session.studentId);
       } catch (err) {
         console.error('Error initializing game:', err);
         setError('Failed to load game data. Please try again.');
@@ -67,65 +237,48 @@ const GameBoard = () => {
     };
     
     initGame();
-  }, [navigate]);
+  }, [navigate, fetchStudentData]);
 
-  // Set up polling to check for updates to student session
+  // Set up polling to check for updates to group session
   useEffect(() => {
-    if (!studentData?.studentId) return;
+    if (!studentData?.groupId) return;
     
     // Initial fetch
-    fetchStudentData(studentData.studentId);
+    fetchStudentData(studentData.groupId);
     
-    // Set up polling interval (every 10 seconds)
+    // Set up polling interval (every 2 seconds for more responsive updates)
     const interval = setInterval(() => {
-      fetchStudentData(studentData.studentId);
-    }, 10000);
+      fetchStudentData(studentData.groupId);
+    }, 2000);
     
     return () => clearInterval(interval);
-  }, [studentData?.studentId]);
+  }, [studentData?.groupId, fetchStudentData]);
 
-  // Fetch student data including end_time
-  const fetchStudentData = async (studentId) => {
-    try {
-      const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('id', studentId)
-        .single();
-      
-      if (error) throw error;
-      
-      if (data) {
-        // Update points from database
-        setPoints(data.points || 0);
-        
-        // Update completed puzzles
-        if (data.completed_puzzles) {
-          setCompletedQuestions(data.completed_puzzles);
-        }
-        
-        // Check if end_time is set
-        if (data.end_time) {
-          setGameEndTime(new Date(data.end_time));
-          
-          // Check if game has already ended
-          if (new Date() > new Date(data.end_time)) {
-            handleGameEnd();
-          }
-        } else {
-          // If no end_time is set, use default (30 minutes from now)
-          const endTime = new Date();
-          endTime.setMinutes(endTime.getMinutes() + 30);
-          setGameEndTime(endTime);
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching student data:', err);
+  // Simple hash function for access code to question seed conversion
+  const hashStringToInt = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
     }
+    return Math.abs(hash);
   };
   
   // Handle card click
   const handleCardClick = (question) => {
+    // Check if question is already completed
+    if (completedQuestions.includes(question.id)) {
+      // Show feedback that it's already solved
+      setFeedbackResult({
+        isCorrect: true,
+        points: 0,
+        alreadySolved: true
+      });
+      setShowFeedback(true);
+      return;
+    }
+    
     setSelectedQuestion(question);
     setShowQuestionModal(true);
   };
@@ -135,6 +288,18 @@ const GameBoard = () => {
     if (!selectedQuestion || !studentData) return;
     
     try {
+      // Check if question was completed while modal was open
+      if (completedQuestions.includes(selectedQuestion.id)) {
+        setShowQuestionModal(false);
+        setFeedbackResult({
+          isCorrect: true,
+          points: 0,
+          alreadySolved: true
+        });
+        setShowFeedback(true);
+        return;
+      }
+      
       // Verify the answer
       const result = await verifyAnswer(selectedQuestion.id, answer);
       
@@ -142,15 +307,15 @@ const GameBoard = () => {
         // Calculate points with penalty for hints used
         const pointsEarned = Math.max(1, result.points - (hintsUsed * 5));
         
-        // Update student score in database
+        // Update group score in database using the groupId
         await updateStudentScore(
-          studentData.studentId, 
+          studentData.groupId, 
           selectedQuestion.id, 
           pointsEarned
         );
         
         // Update local state
-        setCompletedQuestions([...completedQuestions, selectedQuestion.id]);
+        setCompletedQuestions(prev => [...prev, selectedQuestion.id]);
         setPoints(prevPoints => prevPoints + pointsEarned);
         
         // Show success feedback
@@ -193,7 +358,9 @@ const GameBoard = () => {
     // Fetch leaderboard data for the student's section
     if (studentData?.section) {
       try {
+        console.log('Fetching leaderboard for section:', studentData.section);
         const leaderboardData = await getLeaderboard(studentData.section);
+        console.log('Received leaderboard data:', leaderboardData);
         setLeaderboard(leaderboardData);
       } catch (err) {
         console.error('Error fetching leaderboard:', err);
@@ -202,23 +369,102 @@ const GameBoard = () => {
   };
 
   // Handle end game early
-  const handleEndGameEarly = () => {
-    if (window.confirm('Are you sure you want to end the game? Your current score will be submitted.')) {
-      handleGameEnd();
+  const handleEndGameEarly = async () => {
+    if (window.confirm('Are you sure you want to end the game? This will end the game for all group members.')) {
+      try {
+        // Set end_time to now in the database
+        const now = new Date();
+        await supabase
+          .from('students')
+          .update({ end_time: now.toISOString() })
+          .eq('id', studentData.groupId);
+        
+        // Update local state
+        setGameEndTime(now);
+        handleGameEnd();
+      } catch (err) {
+        console.error('Error ending game early:', err);
+        setError('Failed to end game. Please try again.');
+      }
     }
   };
   
   // Handle logout
   const handleLogout = () => {
-    logoutStudent();
-    navigate('/');
-  };
-
-  // Toggle between leaderboard and game summary
-  const toggleLeaderboard = () => {
-    setShowLeaderboard(!showLeaderboard);
+    if (window.confirm('Are you sure you want to logout? Your progress is saved.')) {
+      logoutStudent();
+      navigate('/auth');
+    }
   };
   
+  // Toggle leaderboard visibility
+  const toggleLeaderboard = () => {
+    setShowLeaderboard(prev => !prev);
+  };
+  
+  // Handle retry loading
+  const handleRetry = () => {
+    setLoading(true);
+    setError('');
+    
+    // Get the current session again
+    const session = getStudentSession();
+    if (!session.isLoggedIn) {
+      navigate('/auth');
+      return;
+    }
+    
+    setStudentData(session);
+    
+    // Re-initialize the game
+    const initGame = async () => {
+      try {
+        const groupData = await fetchStudentData(session.groupId);
+        
+        if (!groupData) {
+          setError('Failed to retrieve group data. Please try again or return to login.');
+          setLoading(false);
+          return;
+        }
+        
+        // Use the question_seed from the group for consistent ordering
+        let questionSeed = groupData.question_seed;
+        if (!questionSeed && session.accessCode) {
+          questionSeed = hashStringToInt(session.accessCode);
+        }
+        
+        // Set completed questions from database
+        if (groupData.completed_puzzles && Array.isArray(groupData.completed_puzzles)) {
+          setCompletedQuestions(groupData.completed_puzzles);
+        }
+        
+        // Fetch questions with seed for consistent ordering
+        const allQuestions = await fetchQuestions(questionSeed);
+        if (!allQuestions || allQuestions.length === 0) {
+          setError('No questions available. Please try again later.');
+          setLoading(false);
+          return;
+        }
+        
+        // Use all questions, they'll already be properly shuffled with the seed
+        setQuestions(allQuestions);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error during retry:', err);
+        setError('Failed to load game data. Please try again.');
+        setLoading(false);
+      }
+    };
+    
+    initGame();
+  };
+
+  // Handle back to login
+  const handleBackToLogin = () => {
+    logoutStudent();
+    navigate('/auth');
+  };
+
   if (loading) {
     return (
       <LoadingContainer>
@@ -230,8 +476,16 @@ const GameBoard = () => {
   if (error) {
     return (
       <ErrorContainer>
+        <ErrorIcon>⚠️</ErrorIcon>
         <ErrorMessage>{error}</ErrorMessage>
-        <RetryButton onClick={() => window.location.reload()}>Retry</RetryButton>
+        <ErrorButtonGroup>
+          <RetryButton onClick={handleRetry}>
+            Retry Loading
+          </RetryButton>
+          <BackToLoginButton onClick={handleBackToLogin}>
+            Back to Login
+          </BackToLoginButton>
+        </ErrorButtonGroup>
       </ErrorContainer>
     );
   }
@@ -240,8 +494,16 @@ const GameBoard = () => {
     <GameContainer>
       <TopBar>
         <GameInfo>
-          <SectionInfo>Section: {studentData?.section}</SectionInfo>
-          <DetectiveName>{studentData?.studentName}</DetectiveName>
+          <SectionInfo>
+            <div>Section: {studentData?.section}</div>
+            {studentData?.teamName && (
+              <TeamNameDisplay>Team: {studentData.teamName}</TeamNameDisplay>
+            )}
+          </SectionInfo>
+          <DetectiveName>
+            {studentData?.memberName || 'Detective'}
+            {studentData?.accessCode && <AccessCodeTag>Access Code: {studentData.accessCode}</AccessCodeTag>}
+          </DetectiveName>
         </GameInfo>
         
         <GameStats>
@@ -279,48 +541,68 @@ const GameBoard = () => {
                       <path d="M5 3h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4v-3H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm13 2h-4v10a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V5zm-6 0H6v10a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V5zM5 5v3h2V5H5zm12 0v3h2V5h-2z"/>
                     </svg>
                   </TrophyIcon>
-                  <h2>Class Leaderboard</h2>
-                  <SectionDisplay>{studentData?.section}</SectionDisplay>
+                  <h2>Team Leaderboard</h2>
+                  <SectionDisplay>
+                    {studentData?.section}
+                  </SectionDisplay>
+                  <LeaderboardNote>Showing highest score from each team</LeaderboardNote>
                 </LeaderboardTitle>
                 
                 <TopThreeGrid>
-                  {leaderboard.slice(0, 3).map((student, index) => (
-                    <TopThreeItem key={student.id} position={index + 1} isCurrentUser={student.id === studentData?.studentId}>
-                      <RankBadge position={index + 1}>
-                        {index === 0 ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-                          </svg>
-                        ) : index === 1 ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-                          </svg>
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-                          </svg>
-                        )}
-                      </RankBadge>
-                      <RankNumber>{index + 1}</RankNumber>
-                      <StudentName>{student.name}</StudentName>
-                      <StudentScore>{student.points}</StudentScore>
-                    </TopThreeItem>
-                  ))}
+                  {leaderboard && leaderboard.length > 0 ? (
+                    leaderboard.slice(0, 3).map((team, index) => (
+                      <TopThreeItem 
+                        key={team.id} 
+                        position={index + 1} 
+                        isCurrentUser={studentData?.teamName && team.name === studentData.teamName}
+                      >
+                        <RankBadge position={index + 1}>
+                          {index === 0 ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                            </svg>
+                          ) : index === 1 ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                            </svg>
+                          )}
+                        </RankBadge>
+                        <RankNumber>{index + 1}</RankNumber>
+                        <StudentName>{team.name}</StudentName>
+                        <StudentScore>{team.points}</StudentScore>
+                      </TopThreeItem>
+                    ))
+                  ) : (
+                    <NoTeamsMessage>No teams have completed any puzzles yet</NoTeamsMessage>
+                  )}
                 </TopThreeGrid>
                 
                 <OtherRankingsContainer>
-                  {leaderboard.slice(3, 10).map((student, index) => (
-                    <RankingItem key={student.id} isCurrentUser={student.id === studentData?.studentId}>
-                      <RankPosition>{index + 4}</RankPosition>
-                      <RankStudentName>{student.name}</RankStudentName>
-                      <RankStudentScore>{student.points}</RankStudentScore>
-                    </RankingItem>
-                  ))}
+                  {leaderboard && leaderboard.length > 3 ? (
+                    leaderboard.slice(3, 10).map((team, index) => (
+                      <RankingItem 
+                        key={team.id} 
+                        isCurrentUser={studentData?.teamName && team.name === studentData.teamName}
+                      >
+                        <RankPosition>{index + 4}</RankPosition>
+                        <RankStudentName>{team.name}</RankStudentName>
+                        <RankStudentScore>{team.points}</RankStudentScore>
+                      </RankingItem>
+                    ))
+                  ) : null}
                 </OtherRankingsContainer>
               </>
             ) : (
               <>
                 <h2>Investigation Complete</h2>
+                <TeamInfoDisplay>
+                  <div>Team: {studentData?.teamName}</div>
+                  <div>Section: {studentData?.section}</div>
+                </TeamInfoDisplay>
                 <p>Time's up! You've solved {completedQuestions.length} out of {questions.length} cases.</p>
                 <FinalScore>Total Score: {points}</FinalScore>
               </>
@@ -425,6 +707,9 @@ const SectionInfo = styled.div`
   font-family: 'Special Elite', cursive;
   font-size: 1.2rem;
   color: var(--secondary-brown);
+  margin-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
 `;
 
 const DetectiveName = styled.div`
@@ -432,10 +717,26 @@ const DetectiveName = styled.div`
   font-size: 1.5rem;
   color: var(--primary-dark-brown);
   font-weight: bold;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
   
   @media (max-width: 768px) {
     font-size: 1.3rem;
   }
+`;
+
+const AccessCodeTag = styled.div`
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  background-color: var(--secondary-brown);
+  color: white;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-weight: normal;
+  letter-spacing: 0.5px;
+  margin-top: 0.1rem;
 `;
 
 const GameStats = styled.div`
@@ -540,42 +841,67 @@ const LoadingText = styled.div`
 `;
 
 const ErrorContainer = styled.div`
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  background-color: var(--aged-paper);
+  justify-content: center;
   padding: 2rem;
-  text-align: center;
+  background-color: var(--aged-paper);
+  border: 2px solid #c62828;
+  border-radius: 8px;
+  max-width: 500px;
+  margin: 2rem auto;
+  box-shadow: var(--shadow-medium);
+`;
+
+const ErrorIcon = styled.div`
+  font-size: 3rem;
+  margin-bottom: 1rem;
 `;
 
 const ErrorMessage = styled.div`
   font-family: 'Libre Baskerville', serif;
-  font-size: 1.3rem;
-  color: #a83232;
-  margin-bottom: 2rem;
-  max-width: 600px;
+  font-size: 1.2rem;
+  color: var(--dark-accents);
+  margin-bottom: 1.5rem;
+  text-align: center;
+`;
+
+const ErrorButtonGroup = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
 `;
 
 const RetryButton = styled.button`
-  font-family: 'Special Elite', cursive;
-  background-color: var(--primary-dark-brown);
-  color: var(--aged-paper);
-  border: 2px solid var(--dark-accents);
-  padding: 0.8rem 2rem;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  padding: 0.5rem 1rem;
+  background-color: #2e7d32;
+  color: white;
+  border: none;
   border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Special Elite', cursive;
+  transition: all 0.2s ease;
   
   &:hover {
-    background-color: var(--secondary-brown);
-    transform: translateY(-3px);
+    background-color: #1b5e20;
+    transform: scale(1.05);
   }
+`;
+
+const BackToLoginButton = styled.button`
+  padding: 0.5rem 1rem;
+  background-color: #78909c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Special Elite', cursive;
+  transition: all 0.2s ease;
   
-  &:active {
-    transform: translateY(-1px);
+  &:hover {
+    background-color: #546e7a;
+    transform: scale(1.05);
   }
 `;
 
@@ -908,6 +1234,50 @@ const FooterTrademark = styled.div`
 const XhinvierName = styled.span`
   font-weight: bold;
   color: var(--primary-dark-brown);
+`;
+
+const TeamNameDisplay = styled.div`
+  margin-top: 0.3rem;
+  font-family: 'Special Elite', cursive;
+  font-weight: bold;
+  color: var(--primary-dark-brown);
+  background-color: rgba(92, 64, 51, 0.08);
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  display: inline-block;
+`;
+
+const TeamInfoDisplay = styled.div`
+  margin: 1rem 0;
+  font-family: 'Special Elite', cursive;
+  font-size: 1.1rem;
+  color: var(--primary-dark-brown);
+  background-color: rgba(92, 64, 51, 0.08);
+  padding: 0.8rem 1rem;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: center;
+  font-weight: bold;
+`;
+
+const NoTeamsMessage = styled.div`
+  grid-column: span 3;
+  text-align: center;
+  padding: 2rem;
+  font-family: 'Special Elite', cursive;
+  color: var(--dark-accents);
+  font-style: italic;
+`;
+
+const LeaderboardNote = styled.div`
+  font-family: 'Crimson Text', serif;
+  font-size: 0.9rem;
+  font-style: italic;
+  margin-top: 0.3rem;
+  color: var(--dark-accents);
+  opacity: 0.8;
 `;
 
 export default GameBoard;

@@ -22,7 +22,7 @@ const ResultFeedback = ({
     if (isOpen) {
       const timer = setTimeout(() => {
         onClose();
-      }, 1000); // Reduced from 3000ms to 1800ms
+      }, 100); 
       
       return () => clearTimeout(timer);
     }

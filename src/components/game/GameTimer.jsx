@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { format } from 'date-fns';
 
@@ -10,60 +10,111 @@ import { format } from 'date-fns';
  * @param {Function} props.onTimeUp - Function to call when time runs out
  */
 const GameTimer = ({ endTime, onTimeUp }) => {
-  const [timeLeft, setTimeLeft] = useState({ minutes: 0, seconds: 0 });
+  const [timeLeft, setTimeLeft] = useState({ minutes: 30, seconds: 0 }); // Default to 30 minutes
   const [isWarning, setIsWarning] = useState(false);
   const [isLowTime, setIsLowTime] = useState(false);
-  const [timerId, setTimerId] = useState(null);
-  
-  useEffect(() => {
-    // Clear existing timer when endTime changes
-    if (timerId) {
-      clearInterval(timerId);
+  const timerIdRef = useRef(null);
+  const continuousTimerRef = useRef(null);
+  const endTimeRef = useRef(null);
+
+  // Force recalculation of time left
+  const forceUpdateTimeLeft = () => {
+    if (!endTimeRef.current) return false;
+    
+    const now = new Date();
+    const end = endTimeRef.current;
+    const difference = end - now;
+    
+    // Debug logging
+    console.log(`Timer update - Current time: ${now.toISOString()}`);
+    console.log(`Timer update - End time: ${end.toISOString()}`);
+    console.log(`Timer update - Difference: ${difference}ms`);
+    
+    if (difference <= 0) {
+      console.log('Timer expired');
+      setTimeLeft({ minutes: 0, seconds: 0 });
+      if (onTimeUp) onTimeUp();
+      return false;
     }
     
-    // Calculate time remaining
-    const calculateTimeLeft = () => {
-      if (!endTime) return false;
-      
-      const now = new Date();
-      const end = new Date(endTime);
-      const difference = end - now;
-      
-      if (difference <= 0) {
-        // Time's up
-        setTimeLeft({ minutes: 0, seconds: 0 });
-        if (onTimeUp) onTimeUp();
-        return false;
-      }
-      
-      // Convert to minutes and seconds
-      const minutes = Math.floor((difference / 1000 / 60) % 60);
-      const seconds = Math.floor((difference / 1000) % 60);
-      
-      setTimeLeft({ minutes, seconds });
-      
-      // Set warning states based on time remaining
-      setIsLowTime(minutes < 5);
-      setIsWarning(minutes < 2);
-      
-      return true;
-    };
+    // Convert to minutes and seconds
+    const totalSeconds = Math.floor(difference / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    
+    console.log(`Time left: ${minutes}m ${seconds}s`);
+    setTimeLeft({ minutes, seconds });
+    
+    // Set warning states based on time remaining
+    setIsLowTime(minutes < 5);
+    setIsWarning(minutes < 2);
+    
+    return true;
+  };
+
+  // Initialize timer when endTime changes
+  useEffect(() => {
+    if (!endTime) {
+      console.log('No endTime provided');
+      return;
+    }
+    
+    // Always convert to Date object for consistency
+    const end = new Date(endTime);
+    console.log(`Setting up timer with end time: ${end.toISOString()}`);
+    
+    // Store end time in ref for access from other functions
+    endTimeRef.current = end;
     
     // Calculate initial time
-    const hasTimeLeft = calculateTimeLeft();
+    forceUpdateTimeLeft();
     
-    // If no time left, don't start a new interval
-    if (!hasTimeLeft) return;
+    // Clear any existing timers
+    if (timerIdRef.current) {
+      clearInterval(timerIdRef.current);
+      timerIdRef.current = null;
+    }
     
-    // Start new interval
-    const newTimerId = setInterval(calculateTimeLeft, 1000);
-    setTimerId(newTimerId);
+    if (continuousTimerRef.current) {
+      clearInterval(continuousTimerRef.current);
+      continuousTimerRef.current = null;
+    }
     
-    // Cleanup on unmount or when endTime changes
+    // Set up interval for timer updates
+    timerIdRef.current = setInterval(forceUpdateTimeLeft, 1000);
+    
     return () => {
-      if (newTimerId) clearInterval(newTimerId);
+      if (timerIdRef.current) {
+        clearInterval(timerIdRef.current);
+        timerIdRef.current = null;
+      }
+      
+      if (continuousTimerRef.current) {
+        clearInterval(continuousTimerRef.current);
+        continuousTimerRef.current = null;
+      }
     };
   }, [endTime, onTimeUp]);
+  
+  // Additional continuous timer as backup to ensure updates
+  useEffect(() => {
+    // Start a continuous timer that updates every second regardless of props
+    continuousTimerRef.current = setInterval(() => {
+      forceUpdateTimeLeft();
+    }, 1000);
+    
+    return () => {
+      if (continuousTimerRef.current) {
+        clearInterval(continuousTimerRef.current);
+        continuousTimerRef.current = null;
+      }
+    };
+  }, []);
+  
+  // For debugging - force update every time component renders
+  useEffect(() => {
+    forceUpdateTimeLeft();
+  });
 
   return (
     <TimerContainer isWarning={isWarning} isLowTime={isLowTime}>
