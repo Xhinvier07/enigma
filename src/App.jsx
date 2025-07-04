@@ -9,8 +9,13 @@ import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import GameBoard from './pages/GameBoard';
 import NotFound from './pages/NotFound';
+import AdminLogin from './pages/AdminLogin';
+import AdminDashboard from './pages/AdminDashboard';
 
-// Protected Route Component
+// Import protected routes
+import AdminRoute from './components/common/AdminRoute';
+
+// Protected Route Component for students
 const ProtectedRoute = ({ children }) => {
   const session = getStudentSession();
   
@@ -53,9 +58,13 @@ function App() {
               <GameBoard />
             </ProtectedRoute>
           } />
-          {/* These routes will be implemented next */}
-          {/* <Route path="/admin" element={<AdminLogin />} /> */}
-          {/* <Route path="/admin/dashboard" element={<AdminDashboard />} /> */}
+          {/* Admin routes */}
+          <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          } />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>

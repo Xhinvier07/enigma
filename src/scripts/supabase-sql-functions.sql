@@ -86,4 +86,152 @@ BEGIN
     CREATE INDEX idx_students_points ON students(points DESC);
   END IF;
 END;
+$$;
+
+-- Function to check if a column exists in a table
+CREATE OR REPLACE FUNCTION check_column_exists(table_name text, column_name text)
+RETURNS boolean
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  column_exists boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = check_column_exists.table_name
+    AND column_name = check_column_exists.column_name
+  ) INTO column_exists;
+  
+  RETURN column_exists;
+END;
+$$;
+
+-- Function to add a column if it doesn't exist
+CREATE OR REPLACE FUNCTION add_column_if_not_exists(
+  table_name text,
+  column_name text,
+  column_type text
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NOT check_column_exists(table_name, column_name) THEN
+    EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', 
+                   table_name, column_name, column_type);
+  END IF;
+END;
+$$;
+
+-- Function to get active students
+CREATE OR REPLACE FUNCTION get_active_students(section_filter text DEFAULT NULL)
+RETURNS TABLE (
+  id uuid,
+  name text,
+  section text,
+  start_time timestamptz,
+  points integer,
+  completed_puzzles uuid[]
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF section_filter IS NULL THEN
+    RETURN QUERY
+    SELECT s.id, s.name, s.section, s.start_time, s.points, s.completed_puzzles
+    FROM students s
+    WHERE s.start_time IS NOT NULL
+    AND (NOT check_column_exists('students', 'end_time') OR s.end_time IS NULL)
+    ORDER BY s.start_time DESC;
+  ELSE
+    RETURN QUERY
+    SELECT s.id, s.name, s.section, s.start_time, s.points, s.completed_puzzles
+    FROM students s
+    WHERE s.section = section_filter
+    AND s.start_time IS NOT NULL
+    AND (NOT check_column_exists('students', 'end_time') OR s.end_time IS NULL)
+    ORDER BY s.start_time DESC;
+  END IF;
+END;
+$$;
+
+-- Function to stop a student session
+CREATE OR REPLACE FUNCTION stop_student_session(student_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- Check if end_time column exists, add it if it doesn't
+  PERFORM add_column_if_not_exists('students', 'end_time', 'timestamptz');
+  
+  -- Update the student's end_time
+  UPDATE students
+  SET end_time = now()
+  WHERE id = student_id;
+END;
+$$;
+
+-- Function to stop all active sessions
+CREATE OR REPLACE FUNCTION stop_all_sessions(section_filter text DEFAULT NULL)
+RETURNS integer
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  affected_rows integer;
+BEGIN
+  -- Check if end_time column exists, add it if it doesn't
+  PERFORM add_column_if_not_exists('students', 'end_time', 'timestamptz');
+  
+  -- Update all active sessions
+  IF section_filter IS NULL THEN
+    UPDATE students
+    SET end_time = now()
+    WHERE end_time IS NULL
+    AND start_time IS NOT NULL;
+  ELSE
+    UPDATE students
+    SET end_time = now()
+    WHERE section = section_filter
+    AND end_time IS NULL
+    AND start_time IS NOT NULL;
+  END IF;
+  
+  GET DIAGNOSTICS affected_rows = ROW_COUNT;
+  RETURN affected_rows;
+END;
+$$;
+
+-- Function to set a timer for active sessions
+CREATE OR REPLACE FUNCTION set_timer_for_sessions(duration_seconds integer, section_filter text DEFAULT NULL)
+RETURNS integer
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  end_time timestamptz;
+  affected_rows integer;
+BEGIN
+  -- Calculate end time
+  end_time := now() + (duration_seconds * interval '1 second');
+  
+  -- Check if end_time column exists, add it if it doesn't
+  PERFORM add_column_if_not_exists('students', 'end_time', 'timestamptz');
+  
+  -- Update all active sessions
+  IF section_filter IS NULL THEN
+    UPDATE students
+    SET end_time = set_timer_for_sessions.end_time
+    WHERE end_time IS NULL
+    AND start_time IS NOT NULL;
+  ELSE
+    UPDATE students
+    SET end_time = set_timer_for_sessions.end_time
+    WHERE section = section_filter
+    AND end_time IS NULL
+    AND start_time IS NOT NULL;
+  END IF;
+  
+  GET DIAGNOSTICS affected_rows = ROW_COUNT;
+  RETURN affected_rows;
+END;
 $$; 

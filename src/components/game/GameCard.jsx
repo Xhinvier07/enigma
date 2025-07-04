@@ -51,6 +51,7 @@ const GameCard = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 + 0.2 }}
       isCompleted={isCompleted}
+      className={!isCompleted ? 'clickable' : ''}
     >
       <CardInner isFlipped={isFlipped}>
         <CardFront onClick={handleClick}>
@@ -75,7 +76,7 @@ const CardContainer = styled(motion.div)`
   width: 100%;
   aspect-ratio: 3/4;
   perspective: 1000px;
-  cursor: ${props => props.isCompleted ? 'default' : 'pointer'};
+  cursor: ${props => props.isCompleted ? 'url("./assets/stylus.png") 4 4, auto' : 'url("./assets/magnifying.png") 8 8, pointer'};
   opacity: ${props => props.isCompleted ? 0.8 : 1};
 `;
 

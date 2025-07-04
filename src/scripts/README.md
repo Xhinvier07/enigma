@@ -65,6 +65,24 @@ This will:
    - 5 access codes for different sections
    - 17 puzzle questions of varying difficulty
 
+### Step 4: Admin User Setup
+
+A default admin user is automatically created when you run the SQL commands in `create-tables.sql`:
+
+- Username: `xhinvier`
+- Password: `BSIT-34-PASS`
+
+If you want to create additional admin users, you can:
+
+1. Run the admin setup script:
+   ```bash
+   npm run setup-admin
+   ```
+
+2. Follow the prompts to create a new admin user with your chosen username and password
+
+3. Access the admin dashboard at `/admin` with your admin credentials
+
 ## Manually Verifying Setup
 
 You can verify the database setup by checking the tables in your Supabase dashboard:
@@ -84,4 +102,4 @@ The following access codes are created by the script:
 - **BSCS1A**: For section BSCS-1A
 - **DEMO29**: For section DEMO (for testing purposes)
 
-Use these codes to test the authentication flow in your application. 
+Use these codes to test the authentication flow in your application.

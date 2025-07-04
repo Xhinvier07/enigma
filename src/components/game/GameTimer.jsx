@@ -13,10 +13,18 @@ const GameTimer = ({ endTime, onTimeUp }) => {
   const [timeLeft, setTimeLeft] = useState({ minutes: 0, seconds: 0 });
   const [isWarning, setIsWarning] = useState(false);
   const [isLowTime, setIsLowTime] = useState(false);
+  const [timerId, setTimerId] = useState(null);
   
   useEffect(() => {
+    // Clear existing timer when endTime changes
+    if (timerId) {
+      clearInterval(timerId);
+    }
+    
     // Calculate time remaining
     const calculateTimeLeft = () => {
+      if (!endTime) return false;
+      
       const now = new Date();
       const end = new Date(endTime);
       const difference = end - now;
@@ -41,12 +49,20 @@ const GameTimer = ({ endTime, onTimeUp }) => {
       return true;
     };
     
-    // Calculate initial time and start interval
+    // Calculate initial time
     const hasTimeLeft = calculateTimeLeft();
+    
+    // If no time left, don't start a new interval
     if (!hasTimeLeft) return;
     
-    const timerId = setInterval(calculateTimeLeft, 1000);
-    return () => clearInterval(timerId);
+    // Start new interval
+    const newTimerId = setInterval(calculateTimeLeft, 1000);
+    setTimerId(newTimerId);
+    
+    // Cleanup on unmount or when endTime changes
+    return () => {
+      if (newTimerId) clearInterval(newTimerId);
+    };
   }, [endTime, onTimeUp]);
 
   return (

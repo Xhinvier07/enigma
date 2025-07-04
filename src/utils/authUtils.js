@@ -108,7 +108,7 @@ export const logoutStudent = () => {
 };
 
 /**
- * Validates admin credentials
+ * Validates admin credentials against the admin_users table
  * 
  * @param {string} username - Admin username
  * @param {string} password - Admin password
@@ -116,15 +116,34 @@ export const logoutStudent = () => {
  */
 export const validateAdmin = async (username, password) => {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: username,
-      password,
-    });
+    if (!username || username.trim() === '') {
+      return { valid: false, error: 'Username cannot be empty' };
+    }
+    
+    if (!password) {
+      return { valid: false, error: 'Password cannot be empty' };
+    }
 
-    if (error || !data.user) {
+    // Query the admin_users table to check credentials
+    // Note: For simplicity in this demo, we're storing passwords as plain text
+    // In a production environment, you should use a secure password hashing function
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('id, username')
+      .eq('username', username)
+      .eq('password_hash', password) // Using plain text password for demo
+      .eq('is_active', true)
+      .single();
+
+    if (error) {
+      console.error('Admin validation error:', error);
       return { valid: false, error: 'Invalid credentials' };
     }
 
+    if (!data) {
+      return { valid: false, error: 'Invalid username or password' };
+    }
+    
     return { valid: true, error: null };
   } catch (err) {
     console.error('Admin validation error:', err);

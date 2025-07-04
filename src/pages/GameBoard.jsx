@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { fetchQuestions, shuffleArray, verifyAnswer, updateStudentScore, getLeaderboard } from '../utils/gameUtils';
 import { getStudentSession, logoutStudent } from '../utils/authUtils';
+import supabase from '../services/supabase';
 
 // Components
 import GameCard from '../components/game/GameCard';
@@ -55,10 +56,8 @@ const GameBoard = () => {
         const shuffledQuestions = shuffleArray(allQuestions).slice(0, 15);
         setQuestions(shuffledQuestions);
         
-        // Set game end time (30 minutes from now)
-        const endTime = new Date();
-        endTime.setMinutes(endTime.getMinutes() + 5); // 30-minute game
-        setGameEndTime(endTime);
+        // Initial fetch of student data including end_time
+        await fetchStudentData(session.studentId);
       } catch (err) {
         console.error('Error initializing game:', err);
         setError('Failed to load game data. Please try again.');
@@ -69,6 +68,61 @@ const GameBoard = () => {
     
     initGame();
   }, [navigate]);
+
+  // Set up polling to check for updates to student session
+  useEffect(() => {
+    if (!studentData?.studentId) return;
+    
+    // Initial fetch
+    fetchStudentData(studentData.studentId);
+    
+    // Set up polling interval (every 10 seconds)
+    const interval = setInterval(() => {
+      fetchStudentData(studentData.studentId);
+    }, 10000);
+    
+    return () => clearInterval(interval);
+  }, [studentData?.studentId]);
+
+  // Fetch student data including end_time
+  const fetchStudentData = async (studentId) => {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', studentId)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        // Update points from database
+        setPoints(data.points || 0);
+        
+        // Update completed puzzles
+        if (data.completed_puzzles) {
+          setCompletedQuestions(data.completed_puzzles);
+        }
+        
+        // Check if end_time is set
+        if (data.end_time) {
+          setGameEndTime(new Date(data.end_time));
+          
+          // Check if game has already ended
+          if (new Date() > new Date(data.end_time)) {
+            handleGameEnd();
+          }
+        } else {
+          // If no end_time is set, use default (30 minutes from now)
+          const endTime = new Date();
+          endTime.setMinutes(endTime.getMinutes() + 30);
+          setGameEndTime(endTime);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching student data:', err);
+    }
+  };
   
   // Handle card click
   const handleCardClick = (question) => {
@@ -132,6 +186,8 @@ const GameBoard = () => {
   
   // Handle game end
   const handleGameEnd = async () => {
+    if (gameEnded) return; // Prevent multiple calls
+    
     setGameEnded(true);
     
     // Fetch leaderboard data for the student's section
