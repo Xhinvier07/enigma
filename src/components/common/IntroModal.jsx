@@ -32,7 +32,7 @@ const IntroModal = ({
       const timeout = setTimeout(() => {
         setTypedContent(prev => prev + content[currentIndex]);
         setCurrentIndex(prev => prev + 1);
-      }, 5); // Typing speed
+      }, 50); // Typing speed
 
       return () => clearTimeout(timeout);
     } else {
@@ -99,7 +99,7 @@ const IntroModal = ({
                   <ConfidentialStamp
                     initial={{ opacity: 0, scale: 1.5, rotate: -8 }}
                     animate={{ opacity: 1, scale: 1, rotate: -8 }}
-                    transition={{ duration: 0.5 }}
+                    transition={{ duration: 1 }}
                   >
                     CONFIDENTIAL
                   </ConfidentialStamp>
