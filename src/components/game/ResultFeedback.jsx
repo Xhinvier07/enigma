@@ -24,11 +24,14 @@ const ResultFeedback = ({
   const session = getStudentSession();
   const teamName = session?.teamName || '';
 
-  // Automatically close feedback immediately
+  // Automatically close feedback after 3 seconds
   useEffect(() => {
     if (isOpen) {
-      // Call onClose immediately
-      onClose();
+      const timer = setTimeout(() => {
+        onClose();
+      }, 3000); // Show feedback for 3 seconds
+      
+      return () => clearTimeout(timer);
     }
   }, [isOpen, onClose]);
 
@@ -38,12 +41,12 @@ const ResultFeedback = ({
         <FeedbackContainer
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.1 } }}
+          exit={{ opacity: 0, transition: { duration: 0.3 } }}
         >
           <FeedbackCard
             initial={{ scale: 0.8, y: 20 }}
             animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.8, y: -20, transition: { duration: 0.1 } }}
+            exit={{ scale: 0.8, y: -20, transition: { duration: 0.3 } }}
             isCorrect={isCorrect}
           >
             {isCorrect ? (
