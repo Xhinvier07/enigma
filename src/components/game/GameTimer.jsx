@@ -10,7 +10,7 @@ import { format } from 'date-fns';
  * @param {Function} props.onTimeUp - Function to call when time runs out
  */
 const GameTimer = ({ endTime, onTimeUp }) => {
-  const [timeLeft, setTimeLeft] = useState({ minutes: 30, seconds: 0 }); // Default to 30 minutes
+  const [timeLeft, setTimeLeft] = useState({ minutes: 120, seconds: 0 }); // Default to 120 minutes
   const [isWarning, setIsWarning] = useState(false);
   const [isLowTime, setIsLowTime] = useState(false);
   const timerIdRef = useRef(null);

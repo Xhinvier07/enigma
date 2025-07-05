@@ -236,9 +236,9 @@ const GameBoard = () => {
             handleGameEnd();
           }
         } else {
-          // If no end_time is set, use default (30 minutes from now)
+          // If no end_time is set, use default (120 minutes from now)
           const endTime = new Date();
-          endTime.setMinutes(endTime.getMinutes() + 30);
+          endTime.setMinutes(endTime.getMinutes() + 120);
           setGameEndTime(endTime);
           
           // Update the end time in the database for other group members
@@ -534,6 +534,21 @@ const GameBoard = () => {
           // Check if game has already ended
           if (new Date() > endTime) {
             handleGameEnd();
+          }
+        } else {
+          // If no end_time is set, use default (120 minutes from now)
+          const endTime = new Date();
+          endTime.setMinutes(endTime.getMinutes() + 120);
+          setGameEndTime(endTime);
+          
+          // Update the end time in the database for other group members
+          try {
+            await supabase
+              .from('students')
+              .update({ end_time: endTime.toISOString() })
+              .eq('id', groupData.id);
+          } catch (endTimeError) {
+            console.error('Error setting end time:', endTimeError);
           }
         }
         
