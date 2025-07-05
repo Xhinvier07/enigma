@@ -1,12 +1,18 @@
-# ENIGMA 29
+<div align="center">
 
-Unlock Mysteries, Empower Minds, Conquer Challenges
+
+<h1 style="font-size:42px;">ENIGMA 29</h1>
+Unlock Mysteries, Empower Minds, Conquer Challenges  
+
+<br/>
 
 ![last commit](https://img.shields.io/badge/last%20commit-today-brightgreen)
 ![javascript](https://img.shields.io/badge/javascript-92.0%25-yellow)
 ![languages](https://img.shields.io/badge/languages-4-blue)
 
-Built with the tools and technologies:
+<br/>
+
+Built with the tools and technologies:  
 
 ![JSON](https://img.shields.io/badge/JSON-black?style=flat-square&logo=json)
 ![Markdown](https://img.shields.io/badge/Markdown-black?style=flat-square&logo=markdown)
@@ -19,6 +25,9 @@ Built with the tools and technologies:
 ![ESLint](https://img.shields.io/badge/ESLint-4B32C3?style=flat-square&logo=eslint)
 ![date-fns](https://img.shields.io/badge/date--fns-purple?style=flat-square)
 ![styled-components](https://img.shields.io/badge/styled--components-DB7093?style=flat-square&logo=styled-components)
+
+</div>
+
 
 <div align="center">
   <img src="./src/assets/bg_landing.png" alt="Enigma Banner" width="700px" />

@@ -15,25 +15,39 @@ const GameTimer = ({ endTime, onTimeUp }) => {
   const [isLowTime, setIsLowTime] = useState(false);
   const timerIdRef = useRef(null);
   const continuousTimerRef = useRef(null);
+  const backupTimerRef = useRef(null);
   const endTimeRef = useRef(null);
+  const lastUpdateRef = useRef(Date.now());
+  const timeUpCalledRef = useRef(false);
 
   // Force recalculation of time left
   const forceUpdateTimeLeft = () => {
-    if (!endTimeRef.current) return false;
+    if (!endTimeRef.current) {
+      console.log('Timer: No end time reference available');
+      return false;
+    }
     
     const now = new Date();
-    const end = endTimeRef.current;
+    const end = new Date(endTimeRef.current); // Ensure it's a Date object
     const difference = end - now;
     
     // Debug logging
-    console.log(`Timer update - Current time: ${now.toISOString()}`);
-    console.log(`Timer update - End time: ${end.toISOString()}`);
-    console.log(`Timer update - Difference: ${difference}ms`);
+    console.log(`Timer update at ${now.toISOString()}`);
+    console.log(`End time: ${end.toISOString()}`);
+    console.log(`Time difference: ${difference}ms`);
+    
+    // Update the last update timestamp
+    lastUpdateRef.current = Date.now();
     
     if (difference <= 0) {
-      console.log('Timer expired');
+      console.log('Timer expired - calling onTimeUp');
       setTimeLeft({ minutes: 0, seconds: 0 });
-      if (onTimeUp) onTimeUp();
+      
+      // Only call onTimeUp once
+      if (!timeUpCalledRef.current && onTimeUp) {
+        timeUpCalledRef.current = true;
+        onTimeUp();
+      }
       return false;
     }
     
@@ -52,12 +66,26 @@ const GameTimer = ({ endTime, onTimeUp }) => {
     return true;
   };
 
+  // Check if timer updates are stalled and force an update if needed
+  const checkTimerHealth = () => {
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastUpdateRef.current;
+    
+    if (timeSinceLastUpdate > 2000) {
+      console.log(`Timer health check: Last update was ${timeSinceLastUpdate}ms ago. Forcing update.`);
+      forceUpdateTimeLeft();
+    }
+  };
+
   // Initialize timer when endTime changes
   useEffect(() => {
     if (!endTime) {
-      console.log('No endTime provided');
+      console.log('Timer: No endTime provided');
       return;
     }
+    
+    // Reset the timeUpCalled flag when endTime changes
+    timeUpCalledRef.current = false;
     
     // Always convert to Date object for consistency
     const end = new Date(endTime);
@@ -80,8 +108,16 @@ const GameTimer = ({ endTime, onTimeUp }) => {
       continuousTimerRef.current = null;
     }
     
-    // Set up interval for timer updates
+    if (backupTimerRef.current) {
+      clearInterval(backupTimerRef.current);
+      backupTimerRef.current = null;
+    }
+    
+    // Set up interval for timer updates (primary timer)
     timerIdRef.current = setInterval(forceUpdateTimeLeft, 1000);
+    
+    // Set up health check timer (checks every 2 seconds)
+    backupTimerRef.current = setInterval(checkTimerHealth, 2000);
     
     return () => {
       if (timerIdRef.current) {
@@ -92,6 +128,11 @@ const GameTimer = ({ endTime, onTimeUp }) => {
       if (continuousTimerRef.current) {
         clearInterval(continuousTimerRef.current);
         continuousTimerRef.current = null;
+      }
+      
+      if (backupTimerRef.current) {
+        clearInterval(backupTimerRef.current);
+        backupTimerRef.current = null;
       }
     };
   }, [endTime, onTimeUp]);
@@ -111,10 +152,29 @@ const GameTimer = ({ endTime, onTimeUp }) => {
     };
   }, []);
   
-  // For debugging - force update every time component renders
+  // For debugging - force update on component render
   useEffect(() => {
+    console.log('Timer component rendered, forcing time update');
     forceUpdateTimeLeft();
   });
+
+  // Use requestAnimationFrame as a last resort backup
+  useEffect(() => {
+    let frameId;
+    
+    const updateFrame = () => {
+      forceUpdateTimeLeft();
+      frameId = requestAnimationFrame(updateFrame);
+    };
+    
+    frameId = requestAnimationFrame(updateFrame);
+    
+    return () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+    };
+  }, []);
 
   return (
     <TimerContainer isWarning={isWarning} isLowTime={isLowTime}>

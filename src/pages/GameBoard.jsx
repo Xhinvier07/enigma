@@ -100,7 +100,7 @@ const GameBoard = () => {
       } else if (!gameEndTime) {
         // If no end_time is set, use default (30 minutes from now)
         const endTime = new Date();
-        endTime.setMinutes(endTime.getMinutes() + 30);
+        endTime.setMinutes(endTime.getMinutes() + 120);
         setGameEndTime(endTime);
         
         // Update the end time in the database for other group members
@@ -139,57 +139,60 @@ const GameBoard = () => {
         
         // Initial fetch of group data including end_time and question_seed
         console.log('Attempting to fetch group data with groupId:', session.groupId);
-        const groupData = await fetchStudentData(session.groupId);
+        let groupData = await fetchStudentData(session.groupId);
         
         if (!groupData) {
           console.error('Failed to retrieve group data for groupId:', session.groupId);
           
-          // Try fetching with access code as a fallback
-          if (session.accessCode) {
-            console.log('Attempting to find group by access code:', session.accessCode);
-            const { data: groupsByCode } = await supabase
+          // Try fetching with access code and team name as a fallback
+          if (session.accessCode && session.teamName) {
+            console.log('Attempting to find group by access code and team name:', session.accessCode, session.teamName);
+            const { data: groupsByCodeAndName } = await supabase
               .from('students')
               .select('*')
               .eq('access_code', session.accessCode)
+              .eq('name', session.teamName)
               .order('created_at', { ascending: false })
               .limit(1);
               
-            if (groupsByCode && groupsByCode.length > 0) {
-              console.log('Found group by access code:', groupsByCode[0]);
+            if (groupsByCodeAndName && groupsByCodeAndName.length > 0) {
+              console.log('Found group by access code and team name:', groupsByCodeAndName[0]);
               // Update local storage with the correct group ID
-              localStorage.setItem('enigma_group_id', groupsByCode[0].id);
+              localStorage.setItem('enigma_group_id', groupsByCodeAndName[0].id);
               // Use this group data instead
               const updatedSession = getStudentSession();
               setStudentData(updatedSession);
               
               // Continue with this group data
-              const questionSeed = groupsByCode[0].question_seed || 
-                                  (session.accessCode ? hashStringToInt(session.accessCode) : null);
+              groupData = groupsByCodeAndName[0];
+            } else {
+              // If still no group found, try just by access code (legacy support)
+              console.log('Attempting to find group by access code only:', session.accessCode);
+              const { data: groupsByCode } = await supabase
+                .from('students')
+                .select('*')
+                .eq('access_code', session.accessCode)
+                .order('created_at', { ascending: false })
+                .limit(1);
                 
-              if (questionSeed) {
-                console.log(`Using question seed: ${questionSeed} for access code: ${session.accessCode}`);
+              if (groupsByCode && groupsByCode.length > 0) {
+                console.log('Found group by access code only:', groupsByCode[0]);
+                // Update local storage with the correct group ID
+                localStorage.setItem('enigma_group_id', groupsByCode[0].id);
+                // Use this group data instead
+                const updatedSession = getStudentSession();
+                setStudentData(updatedSession);
                 
-                // Set completed questions from database
-                if (groupsByCode[0].completed_puzzles && Array.isArray(groupsByCode[0].completed_puzzles)) {
-                  setCompletedQuestions(groupsByCode[0].completed_puzzles);
-                }
-                
-                // Fetch questions with seed
-                const allQuestions = await fetchQuestions(questionSeed);
-                if (!allQuestions || allQuestions.length === 0) {
-                  setError('No questions available. Please try again later.');
-                  return;
-                }
-                
-                // Use all questions, they'll already be properly shuffled with the seed
-                setQuestions(allQuestions);
-                return;
+                // Continue with this group data
+                groupData = groupsByCode[0];
               }
             }
           }
           
-          setError('Failed to retrieve group data. Please try again.');
-          return;
+          if (!groupData) {
+            setError('Failed to retrieve group data. Please try again or return to login.');
+            return;
+          }
         }
         
         // Use the question_seed from the group for consistent ordering
@@ -204,7 +207,7 @@ const GameBoard = () => {
             await supabase
               .from('students')
               .update({ question_seed: questionSeed })
-              .eq('id', session.groupId);
+              .eq('id', groupData.id);
           } catch (seedError) {
             console.error('Error storing question seed:', seedError);
             // Continue anyway, we'll use the seed for this session
@@ -216,6 +219,37 @@ const GameBoard = () => {
         // Set completed questions from database
         if (groupData.completed_puzzles && Array.isArray(groupData.completed_puzzles)) {
           setCompletedQuestions(groupData.completed_puzzles);
+        }
+        
+        // Set points from database
+        if (groupData.points) {
+          setPoints(groupData.points);
+        }
+        
+        // Set game end time from database or create a new one
+        if (groupData.end_time) {
+          const endTime = new Date(groupData.end_time);
+          setGameEndTime(endTime);
+          
+          // Check if game has already ended
+          if (new Date() > endTime) {
+            handleGameEnd();
+          }
+        } else {
+          // If no end_time is set, use default (30 minutes from now)
+          const endTime = new Date();
+          endTime.setMinutes(endTime.getMinutes() + 30);
+          setGameEndTime(endTime);
+          
+          // Update the end time in the database for other group members
+          try {
+            await supabase
+              .from('students')
+              .update({ end_time: endTime.toISOString() })
+              .eq('id', groupData.id);
+          } catch (endTimeError) {
+            console.error('Error setting end time:', endTimeError);
+          }
         }
         
         // Fetch questions with seed for consistent ordering across group members
@@ -321,13 +355,15 @@ const GameBoard = () => {
         // Show success feedback
         setFeedbackResult({
           isCorrect: true,
-          points: pointsEarned
+          points: pointsEarned,
+          alreadySolved: false
         });
       } else {
         // Show failure feedback
         setFeedbackResult({
           isCorrect: false,
-          points: 0
+          points: 0,
+          alreadySolved: false
         });
       }
       
@@ -419,7 +455,44 @@ const GameBoard = () => {
     // Re-initialize the game
     const initGame = async () => {
       try {
-        const groupData = await fetchStudentData(session.groupId);
+        // Try to fetch group data with the stored group ID
+        let groupData = await fetchStudentData(session.groupId);
+        
+        // If that fails, try by access code and team name
+        if (!groupData && session.accessCode && session.teamName) {
+          console.log('Retrying with access code and team name:', session.accessCode, session.teamName);
+          const { data: groupsByCodeAndName } = await supabase
+            .from('students')
+            .select('*')
+            .eq('access_code', session.accessCode)
+            .eq('name', session.teamName)
+            .order('created_at', { ascending: false })
+            .limit(1);
+            
+          if (groupsByCodeAndName && groupsByCodeAndName.length > 0) {
+            console.log('Found group by access code and team name:', groupsByCodeAndName[0]);
+            localStorage.setItem('enigma_group_id', groupsByCodeAndName[0].id);
+            const updatedSession = getStudentSession();
+            setStudentData(updatedSession);
+            groupData = groupsByCodeAndName[0];
+          } else {
+            // Last resort: try just by access code
+            const { data: groupsByCode } = await supabase
+              .from('students')
+              .select('*')
+              .eq('access_code', session.accessCode)
+              .order('created_at', { ascending: false })
+              .limit(1);
+              
+            if (groupsByCode && groupsByCode.length > 0) {
+              console.log('Found group by access code only:', groupsByCode[0]);
+              localStorage.setItem('enigma_group_id', groupsByCode[0].id);
+              const updatedSession = getStudentSession();
+              setStudentData(updatedSession);
+              groupData = groupsByCode[0];
+            }
+          }
+        }
         
         if (!groupData) {
           setError('Failed to retrieve group data. Please try again or return to login.');
@@ -431,11 +504,37 @@ const GameBoard = () => {
         let questionSeed = groupData.question_seed;
         if (!questionSeed && session.accessCode) {
           questionSeed = hashStringToInt(session.accessCode);
+          
+          // Store the seed
+          try {
+            await supabase
+              .from('students')
+              .update({ question_seed: questionSeed })
+              .eq('id', groupData.id);
+          } catch (err) {
+            console.error('Error storing question seed:', err);
+          }
         }
         
         // Set completed questions from database
         if (groupData.completed_puzzles && Array.isArray(groupData.completed_puzzles)) {
           setCompletedQuestions(groupData.completed_puzzles);
+        }
+        
+        // Set points from database
+        if (groupData.points) {
+          setPoints(groupData.points);
+        }
+        
+        // Set game end time from database or create a new one
+        if (groupData.end_time) {
+          const endTime = new Date(groupData.end_time);
+          setGameEndTime(endTime);
+          
+          // Check if game has already ended
+          if (new Date() > endTime) {
+            handleGameEnd();
+          }
         }
         
         // Fetch questions with seed for consistent ordering
@@ -662,6 +761,7 @@ const GameBoard = () => {
         isCorrect={feedbackResult.isCorrect}
         points={feedbackResult.points}
         onClose={handleFeedbackClose}
+        alreadySolved={feedbackResult.alreadySolved}
       />
       
       <FooterTrademark>

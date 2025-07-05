@@ -27,19 +27,21 @@ export const validateAccessCode = async (code) => {
 };
 
 /**
- * Check if a group with the given access code already exists
+ * Check if a group with the given access code and team name already exists
  * @param {string} accessCode - The access code to check
+ * @param {string} teamName - The team name to check
  * @returns {Promise<Object|null>} - The group data or null if not found
  */
-export const checkExistingGroup = async (accessCode) => {
+export const checkExistingGroup = async (accessCode, teamName) => {
   try {
-    console.log(`Checking for existing group with access code: ${accessCode}`);
+    console.log(`Checking for existing group with access code: ${accessCode} and team name: ${teamName}`);
     
-    // First try the standard query with group_members filter
+    // First try the standard query with both access code and team name
     const { data, error } = await supabase
       .from('students')
       .select('*')
       .eq('access_code', accessCode)
+      .eq('name', teamName)  // Match by team name
       .is('group_members', 'not.null')  // Only get records that have group members
       .order('created_at', { ascending: false })  // Get the most recent one first
       .limit(1);
@@ -59,6 +61,7 @@ export const checkExistingGroup = async (accessCode) => {
       .from('students')
       .select('*')
       .eq('access_code', accessCode)
+      .eq('name', teamName)  // Match by team name
       .order('created_at', { ascending: false })
       .limit(1);
     
@@ -72,7 +75,7 @@ export const checkExistingGroup = async (accessCode) => {
       return fallbackData[0];
     }
     
-    console.log('No existing group found for access code:', accessCode);
+    console.log('No existing group found for access code and team name:', accessCode, teamName);
     return null;
   } catch (error) {
     console.error('Error checking existing group:', error);
@@ -330,19 +333,41 @@ export const updateStudentScore = async (studentId, pointsToAdd, questionId) => 
 /**
  * Fetches the leaderboard for a specific section
  * @param {string} section - The section code
- * @returns {Promise<Array|null>} - Array of students with scores or null if error
+ * @returns {Promise<Array|null>} - Array of teams with scores or null if error
  */
 export const fetchLeaderboard = async (section) => {
   try {
+    // First fetch all teams in this section
     const { data, error } = await supabase
       .from('students')
       .select('id, name, points, completed_puzzles, group_members')
       .eq('section', section)
-      .order('points', { ascending: false })
-      .limit(10);
+      .order('points', { ascending: false });
     
     if (error) throw error;
-    return data;
+    
+    if (!data || data.length === 0) {
+      return [];
+    }
+    
+    // Group by team name and take the highest score for each team
+    const teamScores = {};
+    
+    data.forEach(team => {
+      const teamName = team.name;
+      
+      // If this team name hasn't been seen yet, or this instance has a higher score
+      if (!teamScores[teamName] || team.points > teamScores[teamName].points) {
+        teamScores[teamName] = team;
+      }
+    });
+    
+    // Convert back to array and sort by points
+    const leaderboardData = Object.values(teamScores)
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 10); // Limit to top 10
+    
+    return leaderboardData;
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
     return null;

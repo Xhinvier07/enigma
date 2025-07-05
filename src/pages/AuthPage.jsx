@@ -52,8 +52,8 @@ const AuthPage = () => {
         return;
       }
       
-      // Validate access code first
-      const result = await validateAccessCode(values.accessCode);
+      // Validate access code first, passing team name to check for existing group
+      const result = await validateAccessCode(values.accessCode, values.teamName);
       
       if (!result.valid) {
         setError(result.error);

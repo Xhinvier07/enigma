@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getStudentSession } from '../../utils/authUtils';
 
 /**
  * ResultFeedback - Shows success/failure feedback after answering a question
@@ -10,19 +11,25 @@ import { motion, AnimatePresence } from 'framer-motion';
  * @param {boolean} props.isCorrect - Whether the answer was correct
  * @param {Function} props.onClose - Function to call when feedback is closed
  * @param {number} props.points - Points earned (if correct)
+ * @param {boolean} props.alreadySolved - Whether the question was already solved by a team member
  */
 const ResultFeedback = ({
   isOpen = false,
   isCorrect = false,
   onClose,
-  points = 0
+  points = 0,
+  alreadySolved = false
 }) => {
+  // Get team name from session
+  const session = getStudentSession();
+  const teamName = session?.teamName || '';
+
   // Automatically close feedback after delay
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
         onClose();
-      }, 100); 
+      }, 3500); // Show feedback for 3.5 seconds
       
       return () => clearTimeout(timer);
     }
@@ -47,7 +54,15 @@ const ResultFeedback = ({
                 <StampWatermark>SOLVED</StampWatermark>
                 <SuccessIcon>✓</SuccessIcon>
                 <Title>Case Solved!</Title>
-                <Message>Excellent detective work!</Message>
+                {alreadySolved ? (
+                  <Message>This case was already solved by your team.</Message>
+                ) : (
+                  <>
+                    <Message>Excellent detective work!</Message>
+                    {teamName && <TeamName>Team {teamName}</TeamName>}
+                    <SyncNote>All team members will see this solved case.</SyncNote>
+                  </>
+                )}
                 {points > 0 && (
                   <Points>+{points} points</Points>
                 )}
@@ -58,6 +73,7 @@ const ResultFeedback = ({
                 <FailureIcon>✗</FailureIcon>
                 <Title>Incorrect Solution</Title>
                 <Message>Keep investigating, detective.</Message>
+                {teamName && <TeamName>Team {teamName}</TeamName>}
               </>
             )}
           </FeedbackCard>
@@ -130,8 +146,25 @@ const Title = styled.h3`
 const Message = styled.p`
   font-family: 'Libre Baskerville', serif;
   font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+  color: var(--dark-accents);
+`;
+
+const TeamName = styled.p`
+  font-family: 'Special Elite', cursive;
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  color: var(--dark-accents);
+`;
+
+const SyncNote = styled.p`
+  font-family: 'Libre Baskerville', serif;
+  font-size: 0.9rem;
+  font-style: italic;
   margin-bottom: 1rem;
   color: var(--dark-accents);
+  opacity: 0.8;
 `;
 
 const Points = styled.div`

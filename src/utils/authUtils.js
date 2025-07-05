@@ -5,9 +5,10 @@ import * as dbUtils from './dbUtils';
  * Validates an access code against the database
  * 
  * @param {string} accessCode - Access code to validate
+ * @param {string} teamName - Team name to check for existing group (optional)
  * @returns {Promise<{ valid: boolean, section: string|null, error: string|null, groupExists: boolean, groupId: string|null }>}
  */
-export const validateAccessCode = async (accessCode) => {
+export const validateAccessCode = async (accessCode, teamName = null) => {
   try {
     if (!accessCode || accessCode.trim() === '') {
       return { valid: false, section: null, error: 'Access code cannot be empty', groupExists: false, groupId: null };
@@ -20,8 +21,11 @@ export const validateAccessCode = async (accessCode) => {
       return { valid: false, section: null, error: 'Invalid access code', groupExists: false, groupId: null };
     }
 
-    // Check if a group with this access code already exists
-    const existingGroup = await dbUtils.checkExistingGroup(accessCode);
+    // Check if a group with this access code and team name already exists
+    // Only check by team name if one is provided
+    const existingGroup = teamName 
+      ? await dbUtils.checkExistingGroup(accessCode, teamName)
+      : await dbUtils.checkExistingGroup(accessCode);
     
     // Return information about existing group if found
     if (existingGroup) {
@@ -75,8 +79,8 @@ export const registerGroup = async ({ members, accessCode, section, teamName }) 
       return { success: false, groupId: null, error: 'Team name is required' };
     }
 
-    // First validate the access code
-    const validationResult = await validateAccessCode(accessCode);
+    // First validate the access code and check for existing group with same team name
+    const validationResult = await validateAccessCode(accessCode, teamName);
     console.log('Access code validation result:', validationResult);
     
     if (!validationResult.valid) {
@@ -85,9 +89,9 @@ export const registerGroup = async ({ members, accessCode, section, teamName }) 
     
     let groupId = null;
 
-    // Check if a group with this access code already exists
+    // Check if a group with this access code and team name already exists
     if (validationResult.groupExists && validationResult.groupId) {
-      console.log('Group exists, joining session with ID:', validationResult.groupId);
+      console.log('Group exists with same access code and team name, joining session with ID:', validationResult.groupId);
       // Group exists, we'll join the existing session
       groupId = validationResult.groupId;
       
