@@ -30,7 +30,7 @@ Built with the tools and technologies:
 
 
 <div align="center">
-  <img src="./src/assets/bg_landing.png" alt="Enigma Banner" width="700px" />
+  <img src="./src/assets/enigma.png" alt="Enigma Banner" width="700px" />
 </div>
 
 ## 📋 Overview
