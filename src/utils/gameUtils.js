@@ -224,11 +224,11 @@ export const getLeaderboard = async (section = null) => {
     // Get all data, sorted by points
     const { data, error } = await query.order('points', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching leaderboard:', error);
-      return [];
-    }
-    
+      if (error) {
+        console.error('Error fetching leaderboard:', error);
+        return [];
+      }
+
     if (!data || data.length === 0) {
       return [];
     }

@@ -29,29 +29,37 @@ const SessionManager = () => {
     try {
       if (showLoading) setLoading(true);
       
-      // Simple approach - get all students and filter in JavaScript
-      const { data, error } = await supabase
+      console.log('Fetching active sessions for section:', selectedSection);
+      
+      // Build query based on section filter
+      let query = supabase
         .from('students')
         .select('*')
-        .order('start_time', { ascending: false });
+        .not('start_time', 'is', null); // Must have start_time
       
-      if (error) throw error;
+      // Add section filter if not "all"
+      if (selectedSection !== 'all') {
+        query = query.eq('section', selectedSection);
+      }
       
-      // Filter active sessions
-      const filtered = data.filter(student => {
-        // Must have start_time
-        if (!student.start_time) return false;
-        
-        // Filter by section if needed
-        if (selectedSection !== 'all' && student.section !== selectedSection) return false;
-        
-        // Check if end_time exists and is null
-        if ('end_time' in student && student.end_time !== null) return false;
-        
-        return true;
-      });
+      // Get sessions that either have no end_time or where end_time is in the future
+      const now = new Date().toISOString();
+      query = query.or(`end_time.is.null,end_time.gt.${now}`);
       
-      setActiveSessions(filtered);
+      // Order by most recent first
+      query = query.order('start_time', { ascending: false });
+      
+      const { data, error: fetchError } = await query;
+      
+      if (fetchError) {
+        console.error('Database query error:', fetchError);
+        throw fetchError;
+      }
+      
+      console.log('Active sessions found:', data?.length || 0);
+      console.log('Session data:', data);
+      
+      setActiveSessions(data || []);
     } catch (err) {
       console.error('Error fetching active sessions:', err);
       setError('Failed to load active sessions. Please check the database schema.');
@@ -92,33 +100,31 @@ const SessionManager = () => {
       
       setLoading(true);
       
-      // Get all active students first
-      const { data: students, error: fetchError } = await supabase
+      // Build query based on section filter
+      let query = supabase
         .from('students')
-        .select('id, section, start_time, end_time')
-        .order('start_time', { ascending: false });
+        .select('id')
+        .not('start_time', 'is', null); // Must have start_time
+      
+      // Add section filter if not "all"
+      if (selectedSection !== 'all') {
+        query = query.eq('section', selectedSection);
+      }
+      
+      // Get sessions with no end_time
+      query = query.is('end_time', null);
+      
+      const { data: activeStudents, error: fetchError } = await query;
       
       if (fetchError) throw fetchError;
       
-      // Filter active students
-      const activeStudents = students.filter(student => {
-        // Must have start_time
-        if (!student.start_time) return false;
-        
-        // Filter by section if needed
-        if (selectedSection !== 'all' && student.section !== selectedSection) return false;
-        
-        // Check if end_time exists and is null
-        if ('end_time' in student && student.end_time !== null) return false;
-        
-        return true;
-      });
-      
-      if (activeStudents.length === 0) {
+      if (!activeStudents || activeStudents.length === 0) {
         setError('No active students found to start timer for.');
         setLoading(false);
         return;
       }
+      
+      console.log(`Setting timer for ${activeStudents.length} students`);
       
       // Calculate end time
       const totalSeconds = timerSettings.minutes * 60 + timerSettings.seconds;
@@ -178,33 +184,31 @@ const SessionManager = () => {
       
       setLoading(true);
       
-      // Get all active students first
-      const { data: students, error: fetchError } = await supabase
+      // Build query based on section filter
+      let query = supabase
         .from('students')
-        .select('id, section, start_time, end_time')
-        .order('start_time', { ascending: false });
+        .select('id')
+        .not('start_time', 'is', null); // Must have start_time
+      
+      // Add section filter if not "all"
+      if (selectedSection !== 'all') {
+        query = query.eq('section', selectedSection);
+      }
+      
+      // Get sessions with no end_time
+      query = query.is('end_time', null);
+      
+      const { data: activeStudents, error: fetchError } = await query;
       
       if (fetchError) throw fetchError;
       
-      // Filter active students
-      const activeStudents = students.filter(student => {
-        // Must have start_time
-        if (!student.start_time) return false;
-        
-        // Filter by section if needed
-        if (selectedSection !== 'all' && student.section !== selectedSection) return false;
-        
-        // Check if end_time exists and is null
-        if ('end_time' in student && student.end_time !== null) return false;
-        
-        return true;
-      });
-      
-      if (activeStudents.length === 0) {
+      if (!activeStudents || activeStudents.length === 0) {
         setError('No active students found to stop sessions for.');
         setLoading(false);
         return;
       }
+      
+      console.log(`Stopping ${activeStudents.length} sessions`);
       
       // Set end time to now
       const endTime = new Date().toISOString();
@@ -237,6 +241,29 @@ const SessionManager = () => {
     const hours = Math.floor(elapsed / 3600);
     const minutes = Math.floor((elapsed % 3600) / 60);
     const seconds = elapsed % 60;
+    
+    return [
+      hours.toString().padStart(2, '0'),
+      minutes.toString().padStart(2, '0'),
+      seconds.toString().padStart(2, '0')
+    ].join(':');
+  };
+
+  // Format the remaining time in hh:mm:ss
+  const formatRemainingTime = (endTime) => {
+    if (!endTime) return 'No timer set';
+    
+    const end = new Date(endTime);
+    const now = new Date();
+    
+    // If end time is in the past, return "Ended"
+    if (end <= now) return 'Ended';
+    
+    const remaining = Math.floor((end - now) / 1000); // remaining seconds
+    
+    const hours = Math.floor(remaining / 3600);
+    const minutes = Math.floor((remaining % 3600) / 60);
+    const seconds = remaining % 60;
     
     return [
       hours.toString().padStart(2, '0'),
@@ -342,12 +369,20 @@ const SessionManager = () => {
                     <DetailValue>{formatElapsedTime(session.start_time)}</DetailValue>
                   </DetailItem>
                   <DetailItem>
+                    <DetailLabel>Time Remaining:</DetailLabel>
+                    <DetailValue>{formatRemainingTime(session.end_time)}</DetailValue>
+                  </DetailItem>
+                  <DetailItem>
                     <DetailLabel>Score:</DetailLabel>
                     <DetailValue>{session.points || 0} points</DetailValue>
                   </DetailItem>
                   <DetailItem>
                     <DetailLabel>Completed:</DetailLabel>
                     <DetailValue>{session.completed_puzzles ? session.completed_puzzles.length : 0} puzzles</DetailValue>
+                  </DetailItem>
+                  <DetailItem>
+                    <DetailLabel>Team Name:</DetailLabel>
+                    <DetailValue>{session.teamName || 'N/A'}</DetailValue>
                   </DetailItem>
                 </SessionDetails>
                 

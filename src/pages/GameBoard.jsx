@@ -191,7 +191,7 @@ const GameBoard = () => {
           
           if (!groupData) {
             setError('Failed to retrieve group data. Please try again or return to login.');
-            return;
+          return;
           }
         }
         
@@ -410,8 +410,8 @@ const GameBoard = () => {
       try {
         // Set end_time to now in the database
         const now = new Date();
-        await supabase
-          .from('students')
+            await supabase
+              .from('students')
           .update({ end_time: now.toISOString() })
           .eq('id', studentData.groupId);
         
@@ -428,11 +428,11 @@ const GameBoard = () => {
   // Handle logout
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout? Your progress is saved.')) {
-      logoutStudent();
+    logoutStudent();
       navigate('/auth');
     }
   };
-  
+
   // Toggle leaderboard visibility
   const toggleLeaderboard = () => {
     setShowLeaderboard(prev => !prev);
@@ -578,7 +578,7 @@ const GameBoard = () => {
     logoutStudent();
     navigate('/auth');
   };
-
+  
   if (loading) {
     return (
       <LoadingContainer>
@@ -670,25 +670,25 @@ const GameBoard = () => {
                         position={index + 1} 
                         isCurrentUser={studentData?.teamName && team.name === studentData.teamName}
                       >
-                        <RankBadge position={index + 1}>
-                          {index === 0 ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-                            </svg>
-                          ) : index === 1 ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-                            </svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-                            </svg>
-                          )}
-                        </RankBadge>
-                        <RankNumber>{index + 1}</RankNumber>
+                      <RankBadge position={index + 1}>
+                        {index === 0 ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                          </svg>
+                        ) : index === 1 ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                          </svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                          </svg>
+                        )}
+                      </RankBadge>
+                      <RankNumber>{index + 1}</RankNumber>
                         <StudentName>{team.name}</StudentName>
                         <StudentScore>{team.points}</StudentScore>
-                      </TopThreeItem>
+                    </TopThreeItem>
                     ))
                   ) : (
                     <NoTeamsMessage>No teams have completed any puzzles yet</NoTeamsMessage>
@@ -702,10 +702,10 @@ const GameBoard = () => {
                         key={team.id} 
                         isCurrentUser={studentData?.teamName && team.name === studentData.teamName}
                       >
-                        <RankPosition>{index + 4}</RankPosition>
+                      <RankPosition>{index + 4}</RankPosition>
                         <RankStudentName>{team.name}</RankStudentName>
                         <RankStudentScore>{team.points}</RankStudentScore>
-                      </RankingItem>
+                    </RankingItem>
                     ))
                   ) : null}
                 </OtherRankingsContainer>
