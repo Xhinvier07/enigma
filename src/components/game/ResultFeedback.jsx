@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStudentSession } from '../../utils/authUtils';
@@ -23,30 +23,47 @@ const ResultFeedback = ({
   // Get team name from session
   const session = getStudentSession();
   const teamName = session?.teamName || '';
-
-  // Automatically close feedback after 3 seconds
+  
+  // Track internal visibility state to handle animation
+  const [visible, setVisible] = useState(false);
+  
+  // When isOpen changes, update internal visibility
   useEffect(() => {
     if (isOpen) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 3000); // Show feedback for 3 seconds
+      setVisible(true);
       
-      return () => clearTimeout(timer);
+      // Schedule auto-close after 3 seconds
+      const timer = setTimeout(() => {
+        setVisible(false);
+        
+        // Give time for exit animation before calling onClose
+        setTimeout(() => {
+          onClose();
+        }, 400);
+      }, 1000);
+      
+      return () => {
+        clearTimeout(timer);
+      };
+    } else {
+      setVisible(false);
     }
   }, [isOpen, onClose]);
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {isOpen && visible && (
         <FeedbackContainer
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.3 } }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
         >
           <FeedbackCard
             initial={{ scale: 0.8, y: 20 }}
             animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.8, y: -20, transition: { duration: 0.3 } }}
+            exit={{ scale: 0.8, y: -20 }}
+            transition={{ duration: 0.3 }}
             isCorrect={isCorrect}
           >
             {isCorrect ? (
@@ -95,6 +112,7 @@ const FeedbackContainer = styled(motion.div)`
   align-items: center;
   z-index: 2000;
   pointer-events: none;
+  background-color: rgba(0, 0, 0, 0.3);
 `;
 
 const FeedbackCard = styled(motion.div)`
@@ -108,6 +126,7 @@ const FeedbackCard = styled(motion.div)`
   box-shadow: var(--shadow-heavy);
   position: relative;
   overflow: hidden;
+  pointer-events: auto;
 `;
 
 const StampWatermark = styled.div`

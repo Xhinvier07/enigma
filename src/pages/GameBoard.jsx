@@ -382,7 +382,10 @@ const GameBoard = () => {
   
   // Handle feedback close
   const handleFeedbackClose = () => {
+    console.log('Closing feedback modal');
     setShowFeedback(false);
+    // Reset feedback result to default state
+    setFeedbackResult({ isCorrect: false, points: 0, alreadySolved: false });
   };
   
   // Handle game end
