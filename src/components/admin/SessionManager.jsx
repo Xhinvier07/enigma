@@ -99,27 +99,32 @@ const SessionManager = () => {
       }
       
       setLoading(true);
+      setError(null);
       
-      // First get all active students with a more reliable query
-      let query = supabase
-        .from('students')
-        .select('id, name, section')
-        .not('start_time', 'is', null);
+      // First get all active students
+      let query = supabase.from('students').select('id, name, section');
+      
+      // Must have start_time
+      query = query.not('start_time', 'is', null);
       
       // Add section filter if not "all"
       if (selectedSection !== 'all') {
         query = query.eq('section', selectedSection);
       }
       
-      // We want sessions that either have no end_time or where end_time is in the future
+      // We need to find sessions that are active (no end_time or end_time in future)
       const now = new Date().toISOString();
+      
+      // This is the correct syntax for Supabase OR conditions
       query = query.or(`end_time.is.null,end_time.gt.${now}`);
       
       const { data: activeStudents, error: fetchError } = await query;
       
       if (fetchError) {
         console.error('Error fetching active students:', fetchError);
-        throw fetchError;
+        setError(`Database error: ${fetchError.message}`);
+        setLoading(false);
+        return;
       }
       
       if (!activeStudents || activeStudents.length === 0) {
@@ -135,30 +140,40 @@ const SessionManager = () => {
       const endTime = new Date(new Date().getTime() + totalSeconds * 1000).toISOString();
       
       // Update each student individually
-      const updatePromises = activeStudents.map(student => {
-        console.log(`Setting timer for student ${student.id} (${student.name})`);
-        return supabase
-          .from('students')
-          .update({ end_time: endTime })
-          .eq('id', student.id);
-      });
+      let successCount = 0;
+      let failCount = 0;
       
-      const results = await Promise.all(updatePromises);
+      for (const student of activeStudents) {
+        try {
+          console.log(`Setting timer for student ${student.id} (${student.name})`);
+          const { error } = await supabase
+            .from('students')
+            .update({ end_time: endTime })
+            .eq('id', student.id);
+          
+          if (error) {
+            console.error(`Error updating student ${student.id}:`, error);
+            failCount++;
+          } else {
+            successCount++;
+          }
+        } catch (err) {
+          console.error(`Exception updating student ${student.id}:`, err);
+          failCount++;
+        }
+      }
       
-      // Check for errors
-      const errors = results.filter(result => result.error);
-      if (errors.length > 0) {
-        console.error('Errors updating some students:', errors);
-        setError(`Updated ${results.length - errors.length} of ${results.length} students. Some updates failed.`);
+      if (failCount > 0) {
+        setError(`Updated ${successCount} of ${activeStudents.length} students. ${failCount} updates failed.`);
       } else {
-        console.log(`Successfully updated all ${results.length} students with end time: ${endTime}`);
+        console.log(`Successfully updated all ${successCount} students with end time: ${endTime}`);
       }
       
       // Refresh the list
       await fetchActiveSessions();
     } catch (err) {
       console.error('Error starting timer for all:', err);
-      setError('Failed to start timer for all students');
+      setError(`Failed to start timer: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -198,27 +213,32 @@ const SessionManager = () => {
       }
       
       setLoading(true);
+      setError(null);
       
-      // First get all active students with a more reliable query
-      let query = supabase
-        .from('students')
-        .select('id, name, section')
-        .not('start_time', 'is', null);
+      // First get all active students
+      let query = supabase.from('students').select('id, name, section');
+      
+      // Must have start_time
+      query = query.not('start_time', 'is', null);
       
       // Add section filter if not "all"
       if (selectedSection !== 'all') {
         query = query.eq('section', selectedSection);
       }
       
-      // We want sessions that either have no end_time or where end_time is in the future
+      // We need to find sessions that are active (no end_time or end_time in future)
       const now = new Date().toISOString();
+      
+      // This is the correct syntax for Supabase OR conditions
       query = query.or(`end_time.is.null,end_time.gt.${now}`);
       
       const { data: activeStudents, error: fetchError } = await query;
       
       if (fetchError) {
         console.error('Error fetching active students:', fetchError);
-        throw fetchError;
+        setError(`Database error: ${fetchError.message}`);
+        setLoading(false);
+        return;
       }
       
       if (!activeStudents || activeStudents.length === 0) {
@@ -233,30 +253,40 @@ const SessionManager = () => {
       const endTime = new Date().toISOString();
       
       // Update each student individually
-      const updatePromises = activeStudents.map(student => {
-        console.log(`Stopping session for student ${student.id} (${student.name})`);
-        return supabase
-          .from('students')
-          .update({ end_time: endTime })
-          .eq('id', student.id);
-      });
+      let successCount = 0;
+      let failCount = 0;
       
-      const results = await Promise.all(updatePromises);
+      for (const student of activeStudents) {
+        try {
+          console.log(`Stopping session for student ${student.id} (${student.name})`);
+          const { error } = await supabase
+            .from('students')
+            .update({ end_time: endTime })
+            .eq('id', student.id);
+          
+          if (error) {
+            console.error(`Error stopping session for student ${student.id}:`, error);
+            failCount++;
+          } else {
+            successCount++;
+          }
+        } catch (err) {
+          console.error(`Exception stopping session for student ${student.id}:`, err);
+          failCount++;
+        }
+      }
       
-      // Check for errors
-      const errors = results.filter(result => result.error);
-      if (errors.length > 0) {
-        console.error('Errors stopping some sessions:', errors);
-        setError(`Stopped ${results.length - errors.length} of ${results.length} sessions. Some updates failed.`);
+      if (failCount > 0) {
+        setError(`Stopped ${successCount} of ${activeStudents.length} sessions. ${failCount} updates failed.`);
       } else {
-        console.log(`Successfully stopped all ${results.length} sessions with end time: ${endTime}`);
+        console.log(`Successfully stopped all ${successCount} sessions with end time: ${endTime}`);
       }
       
       // Refresh the list
       await fetchActiveSessions();
     } catch (err) {
       console.error('Error stopping all sessions:', err);
-      setError('Failed to stop all sessions');
+      setError(`Failed to stop sessions: ${err.message}`);
     } finally {
       setLoading(false);
     }
