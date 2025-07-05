@@ -339,7 +339,7 @@ const GameBoard = () => {
       
       if (result.correct) {
         // Calculate points with penalty for hints used
-        const pointsEarned = Math.max(1, result.points - (hintsUsed * 5));
+        const pointsEarned = Math.max(1, result.points);
         
         // Update group score in database using the groupId
         await updateStudentScore(
