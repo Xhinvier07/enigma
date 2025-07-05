@@ -32,7 +32,7 @@ const ResultFeedback = ({
     if (isOpen) {
       setVisible(true);
       
-      // Schedule auto-close after 3 seconds
+      // Schedule auto-close after 1 second
       const timer = setTimeout(() => {
         setVisible(false);
         
@@ -50,6 +50,15 @@ const ResultFeedback = ({
     }
   }, [isOpen, onClose]);
 
+  // Handle manual close button click
+  const handleCloseClick = (e) => {
+    e.stopPropagation();
+    setVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 400);
+  };
+
   return (
     <AnimatePresence>
       {isOpen && visible && (
@@ -66,6 +75,8 @@ const ResultFeedback = ({
             transition={{ duration: 0.3 }}
             isCorrect={isCorrect}
           >
+            <CloseButton onClick={handleCloseClick}>×</CloseButton>
+            
             {isCorrect ? (
               <>
                 <StampWatermark>SOLVED</StampWatermark>
@@ -127,6 +138,35 @@ const FeedbackCard = styled(motion.div)`
   position: relative;
   overflow: hidden;
   pointer-events: auto;
+`;
+
+const CloseButton = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.1);
+  border: none;
+  color: var(--dark-accents);
+  font-size: 1.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 10;
+  
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+    transform: scale(1.1);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
 `;
 
 const StampWatermark = styled.div`

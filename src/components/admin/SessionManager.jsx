@@ -444,6 +444,20 @@ const SessionManager = () => {
                     <DetailLabel>Team Name:</DetailLabel>
                     <DetailValue>{session.name|| 'N/A'}</DetailValue>
                   </DetailItem>
+                  <DetailItem>
+                    <DetailLabel>Group Members:</DetailLabel>
+                    <MembersValue>
+                      {session.group_members && session.group_members.length > 0 ? (
+                        <MembersList>
+                          {session.group_members.map((member, index) => (
+                            <MemberItem key={index}>{member}</MemberItem>
+                          ))}
+                        </MembersList>
+                      ) : (
+                        'No members'
+                      )}
+                    </MembersValue>
+                  </DetailItem>
                 </SessionDetails>
                 
                 <StopSessionButton onClick={() => stopSessionForStudent(session.id)}>
@@ -726,6 +740,50 @@ const DetailLabel = styled.span`
 const DetailValue = styled.span`
   font-family: 'Crimson Text', serif;
   color: var(--primary-dark-brown);
+`;
+
+const MembersValue = styled.div`
+  font-family: 'Crimson Text', serif;
+  color: var(--primary-dark-brown);
+  display: flex;
+  flex-direction: column;
+`;
+
+const MembersList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0.2rem 0 0 0;
+  max-height: 80px;
+  overflow-y: auto;
+  background-color: rgba(210, 180, 140, 0.1);
+  border-radius: 4px;
+  padding: 0.3rem;
+  
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--secondary-brown);
+    border-radius: 4px;
+  }
+`;
+
+const MemberItem = styled.li`
+  margin-bottom: 0.2rem;
+  font-size: 0.85rem;
+  color: var(--primary-dark-brown);
+  padding: 0.1rem 0.3rem;
+  border-bottom: 1px dotted rgba(139, 69, 19, 0.2);
+  
+  &:last-child {
+    margin-bottom: 0;
+    border-bottom: none;
+  }
 `;
 
 const StopSessionButton = styled.button`
