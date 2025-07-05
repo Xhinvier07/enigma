@@ -1,4 +1,4 @@
-# ENIGMA
+# ENIGMA 29
 
 Unlock Mysteries, Empower Minds, Conquer Challenges
 
@@ -26,7 +26,7 @@ Built with the tools and technologies:
 
 ## 📋 Overview
 
-Enigma is an interactive puzzle-solving detective game designed for educational environments. Players work together in teams to solve information security puzzles, competing against other teams in their section. The game features real-time collaboration, synchronized gameplay, and a leaderboard system.
+Enigma 29 is an interactive puzzle-solving detective game designed for educational environments. Players work together in teams to solve information security puzzles, competing against other teams in their section. The game features real-time collaboration, synchronized gameplay, and a leaderboard system.
 
 <div align="center">
   <img src="./public/gamecard.png" alt="Game Card" width="200px" style="margin-right: 20px;" />
