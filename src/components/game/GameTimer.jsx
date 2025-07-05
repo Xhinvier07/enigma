@@ -60,8 +60,8 @@ const GameTimer = ({ endTime, onTimeUp }) => {
     setTimeLeft({ minutes, seconds });
     
     // Set warning states based on time remaining
-    setIsLowTime(minutes < 5);
-    setIsWarning(minutes < 2);
+    setIsLowTime(minutes < 30);
+    setIsWarning(minutes < 5);
     
     return true;
   };
