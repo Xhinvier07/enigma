@@ -412,7 +412,7 @@ const SessionManager = () => {
                   </DetailItem>
                   <DetailItem>
                     <DetailLabel>Team Name:</DetailLabel>
-                    <DetailValue>{session.teamName || 'N/A'}</DetailValue>
+                    <DetailValue>{session.name|| 'N/A'}</DetailValue>
                   </DetailItem>
                 </SessionDetails>
                 
