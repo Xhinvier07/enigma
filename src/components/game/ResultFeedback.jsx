@@ -141,29 +141,40 @@ const FeedbackCard = styled(motion.div)`
 `;
 
 const CloseButton = styled.button`
+  --size: 2rem;
+
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 30px;
-  height: 30px;
+  top: 0.75rem;
+  right: 0.75rem;
+
+  width: var(--size);
+  height: var(--size);
+  aspect-ratio: 1;
   border-radius: 50%;
-  background-color: rgba(0, 0, 0, 0.1);
-  border: none;
-  color: var(--dark-accents);
-  font-size: 1.5rem;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+
+  background-color: var(--primary-dark-brown);
+  color: var(--aged-paper);
+  border: 2px solid var(--dark-accents);
+
+  display: grid;
+  place-items: center;
+
+  font-family: 'Special Elite', cursive;
+  font-size: 1.25rem;
+  line-height: 1.7;
+  padding: 0;
+  margin: 0;
+
   cursor: pointer;
-  transition: all 0.2s;
+  box-shadow: 0 2px 5px rgba(0 0 0 / 0.25);
   z-index: 10;
-  
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+
   &:hover {
-    background-color: rgba(0, 0, 0, 0.2);
-    transform: scale(1.1);
+    background-color: var(--secondary-brown);
+    transform: scale(1.08);
   }
-  
+
   &:active {
     transform: scale(0.95);
   }

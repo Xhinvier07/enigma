@@ -346,8 +346,8 @@ const RemoveMemberButton = styled.button`
   background-color: #8b0000;
   color: white;
   border: none;
-  width: 30px;
-  height: 36px;
+  width: 50px;
+  height: 52px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
