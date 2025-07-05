@@ -29,7 +29,7 @@ const ResultFeedback = ({
     if (isOpen) {
       const timer = setTimeout(() => {
         onClose();
-      }, 3500); // Show feedback for 3.5 seconds
+      }, 1000); // Show feedback for 3.5 seconds
       
       return () => clearTimeout(timer);
     }
