@@ -16,7 +16,8 @@ const QuestionManager = () => {
     hints: ['', '', ''],
     difficulty: 'easy',
     points: 50,
-    is_active: true
+    is_active: true,
+    image_url: ''
   });
 
   // Difficulty options
@@ -108,7 +109,8 @@ const QuestionManager = () => {
         hints: currentQuestion.hints.filter(hint => hint.trim() !== ''),
         difficulty: currentQuestion.difficulty,
         points: parseInt(currentQuestion.points) || getDefaultPointsByDifficulty(currentQuestion.difficulty),
-        is_active: currentQuestion.is_active
+        is_active: currentQuestion.is_active,
+        image_url: currentQuestion.image_url || null
       };
       
       let result;
@@ -149,7 +151,9 @@ const QuestionManager = () => {
         [...question.hints, '', '', ''].slice(0, 3) : 
         ['', '', ''],
       // Add points if not present
-      points: question.points || getDefaultPointsByDifficulty(question.difficulty)
+      points: question.points || getDefaultPointsByDifficulty(question.difficulty),
+      // Add image_url if not present
+      image_url: question.image_url || ''
     });
   };
 
@@ -188,9 +192,10 @@ const QuestionManager = () => {
       question: '',
       answer: '',
       hints: ['', '', ''],
-      difficulty: 'medium',
+      difficulty: 'easy',
       points: 50,
-      is_active: true
+      is_active: true,
+      image_url: ''
     });
   };
 
@@ -226,6 +231,17 @@ const QuestionManager = () => {
               onChange={handleInputChange}
               placeholder="Correct answer to the question"
               required
+            />
+          </FormGroup>
+          
+          <FormGroup>
+            <Label>Image URL (Optional)</Label>
+            <Input 
+              type="url" 
+              name="image_url" 
+              value={currentQuestion.image_url}
+              onChange={handleInputChange}
+              placeholder="https://example.com/image.jpg"
             />
           </FormGroup>
           
@@ -343,6 +359,9 @@ const QuestionManager = () => {
                 <MetaItem>Answer: <strong>{question.answer}</strong></MetaItem>
                 <MetaItem>Points: <strong>{question.points || getDefaultPointsByDifficulty(question.difficulty)}</strong></MetaItem>
                 <MetaItem>Status: <StatusIndicator active={question.is_active} /></MetaItem>
+                {question.image_url && (
+                  <MetaItem>Image: <a href={question.image_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--secondary-brown)' }}>View Image</a></MetaItem>
+                )}
             </QuestionMeta>
             
             {question.hints && question.hints.length > 0 && (
