@@ -158,7 +158,7 @@ const QuestionModal = ({
                   </>
                 )}
                 </HintButton>
-                <SkipButton 
+                <SkipButton //test
                   type="button"
                   onClick={onSkip}
                   whileTap={{ scale: 0.95 }}
