@@ -107,6 +107,17 @@ const QuestionModal = ({
             <QuestionContent>
               <QuestionText>{question.question}</QuestionText>
               
+              {question.image_url && (
+                <QuestionImage 
+                  src={question.image_url} 
+                  alt="Question visual aid"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    console.error('Failed to load question image:', question.image_url);
+                  }}
+                />
+              )}
+              
               {hintsUsed > 0 && (
                 <HintsContainer>
                   {hints.map((hint, index) => {
@@ -445,4 +456,18 @@ const PointsIndicator = styled.div`
   border: 1px solid var(--dark-accents);
   background-color: var(--primary-dark-brown);
   color: var(--aged-paper);
+`;
+
+const QuestionImage = styled.img`
+  max-width: 100%;
+  max-height: 400px;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  margin: 1rem 0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  border: 2px solid var(--secondary-brown);
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 `;

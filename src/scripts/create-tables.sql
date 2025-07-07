@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS questions (
   difficulty TEXT NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard')),
   points INTEGER DEFAULT 50,
   hints TEXT[] NOT NULL DEFAULT '{}',
+  image_url TEXT,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
