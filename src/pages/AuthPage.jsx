@@ -136,7 +136,7 @@ const AuthPage = () => {
             </svg>
           </BriefcaseIcon>
           <BriefcaseText>
-            Before starting your investigation, get your <BriefcaseLink href="/HERE.zip" download>briefcase </BriefcaseLink> with the evidence and tools needed for this case.
+            Before starting your investigation, get your <BriefcaseLink href="/CTF_BRIEFCASE.zip" download>briefcase </BriefcaseLink> with the evidence and tools needed for this case.
           </BriefcaseText>
         </BriefcaseSection>
         
