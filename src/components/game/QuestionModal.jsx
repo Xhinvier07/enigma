@@ -27,6 +27,7 @@ const QuestionModal = ({
   const [hintsUsed, setHintsUsed] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [hintCooldown, setHintCooldown] = useState(0);
 
   // Reset state when a new question is shown
   useEffect(() => {
@@ -38,20 +39,12 @@ const QuestionModal = ({
     }
   }, [isOpen, question?.id]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!answer.trim()) {
-      setError('Please enter an answer');
-      return;
-    }
-    
-    onSubmit(answer, hintsUsed);
-  };
-
+  // Start cooldown when hint is used
   const handleGetHint = async () => {
-    if (hintsUsed >= 3 || !question?.id) return;
-    
+    if (hintsUsed >= 3 || !question?.id || hintCooldown > 0) return;
+
     setIsLoading(true);
+    setHintCooldown(30); // Start 30s cooldown
     try {
       const result = await getHint(question.id, hintsUsed);
       
@@ -69,6 +62,29 @@ const QuestionModal = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Cooldown timer effect
+  useEffect(() => {
+    if (hintCooldown > 0) {
+      const timer = setTimeout(() => setHintCooldown(hintCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [hintCooldown]);
+
+  // Reset cooldown when modal closes or new question
+  useEffect(() => {
+    if (!isOpen) setHintCooldown(0);
+  }, [isOpen, question?.id]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!answer.trim()) {
+      setError('Please enter an answer');
+      return;
+    }
+    
+    onSubmit(answer, hintsUsed);
   };
 
   // Convert difficulty to points
@@ -146,17 +162,18 @@ const QuestionModal = ({
               </AnswerContainer>
 
               <ButtonContainer>
-                <HintButton 
+                <HintButton
                   type="button"
                   onClick={handleGetHint}
-                  disabled={hintsUsed >= 3 || isLoading}
+                  disabled={hintsUsed >= 3 || isLoading || hintCooldown > 0}
                   whileTap={{ scale: 0.95 }}
                 >
-                {isLoading ? 'Loading...' : (
-                  <>
-                    Hint<br />({3 - hintsUsed} left)
-                  </>
-                )}
+                  {isLoading
+                    ? 'Loading...'
+                    : hintCooldown > 0
+                      ? `Hint (${hintCooldown}s)`
+                      : <>Hint<br />({3 - hintsUsed} left)</>
+                  }
                 </HintButton>
                 <SkipButton //test
                   type="button"
