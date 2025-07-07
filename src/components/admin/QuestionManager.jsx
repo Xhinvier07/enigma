@@ -637,7 +637,7 @@ const QuestionsList = styled.div`
   flex-direction: column;
   gap: 1rem;
   margin-top: 1rem;
-  max-height: 750px;
+  max-height: 800px;
   overflow-y: auto;
   
   /* Scrollbar styles */
