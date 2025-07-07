@@ -10,7 +10,7 @@ const QuestionManager = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [currentQuestion, setCurrentQuestion] = useState({
-    id: null,
+    id: null, //test
     question: '',
     answer: '',
     hints: ['', '', ''],
