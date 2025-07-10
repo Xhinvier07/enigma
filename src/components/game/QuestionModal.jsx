@@ -44,7 +44,7 @@ const QuestionModal = ({
     if (hintsUsed >= 3 || !question?.id || hintCooldown > 0) return;
 
     setIsLoading(true);
-    setHintCooldown(30); // Start 30s cooldown
+    setHintCooldown(60); // Start 30s cooldown
     try {
       const result = await getHint(question.id, hintsUsed);
       
