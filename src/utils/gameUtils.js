@@ -51,9 +51,9 @@ export const fetchQuestions = async (seed = null) => {
     
     // Take the required number of questions from each difficulty
     // If not enough questions of a difficulty, take all available
-    const selectedEasy = shuffledEasy.slice(0, 6); // 7 easy questions
-    const selectedMedium = shuffledMedium.slice(0, 4); // 5 medium questions
-    const selectedHard = shuffledHard.slice(0, 5); // 3 hard questions
+    const selectedEasy = shuffledEasy.slice(0, 1); // 7 easy questions
+    const selectedMedium = shuffledMedium.slice(0, 5); // 5 medium questions
+    const selectedHard = shuffledHard.slice(0, 9); // 3 hard questions
     
     // Combine all selected questions
     let selectedQuestions = [
